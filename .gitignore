@@ -1,0 +1,50 @@
+# Environments
+.env
+.venv/
+venv/
+env/
+
+# Python caching
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+
+# Databases & local states
+*.db
+coach.db
+
+# Frontend
+node_modules/
+dist/
+.npm
+frontend/dist/
+frontend/node_modules/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+build/
+develop-eggs/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+*.md
+
