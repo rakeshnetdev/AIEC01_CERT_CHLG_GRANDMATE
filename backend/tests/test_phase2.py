@@ -88,7 +88,7 @@ def test_classify_theme():
     assert classify_theme(board_mid, ply=15, moved_piece_square=chess.F3) == "Tactics"
 
 
-@patch("coach.analysis.pipeline.engine_eval")
+@patch("coach.tools.engine_eval.engine_eval")
 def test_analyze_game_color_filtering(mock_engine_eval):
     # Setup mocked evaluations:
     # First ply (1. e4): best e4, played e4.

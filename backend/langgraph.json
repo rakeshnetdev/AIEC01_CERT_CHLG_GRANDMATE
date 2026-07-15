@@ -1,0 +1,7 @@
+{
+  "dependencies": ["."],
+  "graphs": {
+    "coach": "./src/coach/agent/graph.py:compile_coach_graph"
+  },
+  "env": ".env"
+}

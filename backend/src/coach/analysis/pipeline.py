@@ -4,7 +4,6 @@ from typing import List
 from config.settings import Settings
 from coach.schemas.models import Game, MoveAnalysis
 from coach.ingestion.pgn import iter_positions
-from coach.tools.engine_eval import engine_eval
 from coach.analysis.classify import calculate_cpl_and_label
 from coach.analysis.themes import classify_theme
 
@@ -29,6 +28,7 @@ def get_pv_san(board: chess.Board, pv_uci: List[str]) -> List[str]:
 
 def analyze_game(game: Game, settings: Settings) -> List[MoveAnalysis]:
     """Analyzes all plies of a game for the user's color, classifying mistakes."""
+    from coach.tools.engine_eval import engine_eval
     logger.info(f"Starting analysis for game {game.game_id} (User color: {game.user_color})")
     
     analyses: List[MoveAnalysis] = []
