@@ -41,6 +41,7 @@ class ReviewRequest(BaseModel):
     source: Optional[Source] = None
     max_games: int = 1
     pgn: Optional[str] = None
+    session_id: Optional[str] = None
 
 class ChatRequest(BaseModel):
     message: str
@@ -79,7 +80,8 @@ def review_game(request: ReviewRequest):
         "output": ""
     }
     
-    config = {"configurable": {"thread_id": f"review_{request.username or 'anonymous'}"}}
+    thread_id = request.session_id or f"review_{request.username or 'anonymous'}"
+    config = {"configurable": {"thread_id": thread_id}}
     try:
         final_state = coach_graph.invoke(inputs, config=config)
     except Exception as e:
@@ -87,7 +89,18 @@ def review_game(request: ReviewRequest):
         raise HTTPException(status_code=500, detail=f"Coach agent execution failed: {e}")
         
     game = final_state.get("game")
+    if isinstance(game, dict):
+        game = Game(**game)
+        
     analyses = final_state.get("analyses", [])
+    processed_analyses = []
+    for ma in analyses:
+        if isinstance(ma, dict):
+            processed_analyses.append(MoveAnalysis(**ma))
+        else:
+            processed_analyses.append(ma)
+    analyses = processed_analyses
+    
     summary = final_state.get("output", "")
     
     if not game:

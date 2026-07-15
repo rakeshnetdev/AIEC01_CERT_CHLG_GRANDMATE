@@ -41,6 +41,7 @@ export interface ReviewRequest {
   source?: Source;
   max_games?: number;
   pgn?: string;
+  session_id?: string;
 }
 
 export async function reviewGame(request: ReviewRequest): Promise<CoachReport> {

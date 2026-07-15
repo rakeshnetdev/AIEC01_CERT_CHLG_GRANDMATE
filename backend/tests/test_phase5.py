@@ -115,3 +115,44 @@ def test_praggnanandhaa_pgn_validation():
     # Should pass without raising ValueError
     validate_request(pgn_input)
 
+
+@patch("coach.agent.graph.engine_eval")
+@patch("coach.agent.graph.retrieve_context")
+@patch("coach.agent.graph.chat")
+def test_review_and_chat_session_continuity(mock_chat, mock_retrieve_context, mock_engine_eval):
+    # Mock behaviors
+    mock_engine_eval.side_effect = [
+        {"best_uci": "e2e4", "pv_uci": ["e2e4"], "score_cp": 35},
+    ]
+    mock_retrieve_context.return_value = []
+    mock_chat.side_effect = [
+        "Welcome! e4 is great.", # Response for review
+        "The weaknesses are..." # Response for follow-up chat
+    ]
+    
+    session_id = "test_shared_session_123"
+    pgn_input = '[White "magnus"]\n[Black "hikaru"]\n[Opening "Sicilian Defense"]\n[Result "*"]\n\n1. e4 c5 *'
+    
+    # 1. First run /review with session_id
+    payload = {
+        "username": "magnus",
+        "source": "lichess",
+        "pgn": pgn_input,
+        "max_games": 1,
+        "session_id": session_id
+    }
+    
+    response = client.post("/review", json=payload)
+    assert response.status_code == 200
+    assert response.json()["username"] == "magnus"
+    
+    # 2. Call /chat with the SAME session_id
+    chat_payload = {
+        "message": "explain me the focus weaknesses in the play",
+        "session_id": session_id
+    }
+    response = client.post("/chat", json=chat_payload)
+    assert response.status_code == 200
+    assert "weaknesses" in response.json()["reply"]
+
+

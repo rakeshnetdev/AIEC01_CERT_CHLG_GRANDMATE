@@ -56,8 +56,8 @@ export default function App() {
     
     try {
       const payload = activeTab === "fetch" 
-        ? { username, source, max_games: 1 }
-        : { pgn };
+        ? { username, source, max_games: 1, session_id: sessionId }
+        : { pgn, session_id: sessionId };
         
       if (activeTab === "fetch" && !username.trim()) {
         throw new Error("Please enter a username.");
