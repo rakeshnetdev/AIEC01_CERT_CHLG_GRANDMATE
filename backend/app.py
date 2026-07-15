@@ -170,7 +170,36 @@ def review_game(request: ReviewRequest):
             )
         )
         drill_index += 1
-        
+
+    # 7. Build a compact position explanation from the engine-grounded findings
+    position_explanation: List[str] = []
+    notable_moves = [ma for ma in analyses if ma.label != "ok"]
+    if notable_moves:
+        for ma in notable_moves[:3]:
+            theme = ma.theme or "the position"
+            position_explanation.append(
+                f"At ply {ma.ply}, {ma.played_san} was a {ma.label}; the stronger choice was {ma.best_san}, which improves {theme}."
+            )
+
+    if not position_explanation:
+        opening_hint = game.opening_name or "your opening"
+        position_explanation = [
+            f"In {opening_hint}, keep the center under control and develop your pieces with purpose.",
+            "Your review suggests you should look for simple, stable moves before taking tactical risks.",
+            "A practical next step is to compare the key moments with the engine line and reinforce the pattern."
+        ]
+
+    if top_weaknesses:
+        first_theme = top_weaknesses[0].theme
+        if not any(first_theme.lower() in item.lower() for item in position_explanation):
+            position_explanation.insert(1, f"The recurring theme in your game was {first_theme.lower()}, so review that pattern closely.")
+
+    if len(position_explanation) < 3:
+        while len(position_explanation) < 3:
+            position_explanation.append(
+                "Keep building the position patiently and look for the next best practical move."
+            )
+    
     latency = time.time() - start_time
     
     # Estimate token cost (mock)
@@ -183,6 +212,7 @@ def review_game(request: ReviewRequest):
         findings=findings,
         top_weaknesses=top_weaknesses,
         drills=drills,
+        position_explanation=position_explanation,
         latency_s=round(latency, 2),
         cost_usd=cost
     )

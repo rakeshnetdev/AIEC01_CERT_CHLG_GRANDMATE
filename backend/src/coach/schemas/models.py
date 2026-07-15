@@ -68,5 +68,6 @@ class CoachReport(BaseModel):
     findings: List[Explanation]
     top_weaknesses: List[Weakness]
     drills: List[Drill]
+    position_explanation: List[str] = []
     latency_s: float = 0.0
     cost_usd: float = 0.0

@@ -271,6 +271,20 @@ export default function App() {
                 </div>
               </div>
 
+              {/* Explain This Position */}
+              <div className="glass-panel rounded-2xl p-6 md:p-8 flex flex-col gap-4 shadow-xl">
+                <h4 className="text-lg font-bold tracking-tight text-white flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-sky-400" /> Explain this position
+                </h4>
+                <ul className="list-disc pl-5 text-sm text-slate-300 space-y-2">
+                  {report.position_explanation?.length > 0 ? (
+                    report.position_explanation.map((item, index) => <li key={index}>{item}</li>)
+                  ) : (
+                    <li className="text-slate-500">No position explanation available yet.</li>
+                  )}
+                </ul>
+              </div>
+
               {/* Weaknesses and Drills */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Weaknesses List */}

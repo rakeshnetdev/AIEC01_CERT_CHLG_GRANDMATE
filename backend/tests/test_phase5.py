@@ -42,6 +42,33 @@ def test_review_endpoint(mock_chat, mock_retrieve_context, mock_engine_eval):
     assert "findings" in data
     assert "top_weaknesses" in data
     assert "drills" in data
+    assert "position_explanation" in data
+    assert len(data["position_explanation"]) == 3
+
+
+@patch("coach.agent.graph.engine_eval")
+@patch("coach.agent.graph.retrieve_context")
+@patch("coach.agent.graph.chat")
+def test_position_explanation_uses_specific_mistake_context(mock_chat, mock_retrieve_context, mock_engine_eval):
+    mock_engine_eval.side_effect = [
+        {"best_uci": "e2e4", "pv_uci": ["e2e4"], "score_cp": 35},
+    ]
+    mock_retrieve_context.return_value = []
+    mock_chat.return_value = "Good coaching note."
+
+    pgn_input = '[White "magnus"]\n[Black "hikaru"]\n[Opening "Sicilian Defense"]\n[Result "*"]\n\n1. e4 c5 *'
+    payload = {
+        "username": "magnus",
+        "source": "lichess",
+        "pgn": pgn_input,
+        "max_games": 1
+    }
+
+    response = client.post("/review", json=payload)
+    assert response.status_code == 200
+
+    data = response.json()
+    assert any("sicilian" in item.lower() for item in data["position_explanation"])
 
 
 def test_guardrails_input_refusal():

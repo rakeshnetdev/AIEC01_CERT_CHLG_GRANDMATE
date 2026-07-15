@@ -30,6 +30,7 @@ export interface CoachReport {
   findings: Explanation[];
   top_weaknesses: Weakness[];
   drills: Drill[];
+  position_explanation: string[];
   latency_s: number;
   cost_usd: number;
 }
