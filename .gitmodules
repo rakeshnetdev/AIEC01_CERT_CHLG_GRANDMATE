@@ -1,0 +1,3 @@
+[submodule "final_docs"]
+	path = final_docs
+	url = https://github.com/rakeshnetdev/AIEC01_cert_c_docs
