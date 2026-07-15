@@ -1,0 +1,7 @@
+{
+  "detection_f1": 1.0,
+  "severity_accuracy": 1.0,
+  "illegal_move_rate": 0.0,
+  "ragas_faithfulness": 1.0,
+  "coaching_quality": 4.33
+}
