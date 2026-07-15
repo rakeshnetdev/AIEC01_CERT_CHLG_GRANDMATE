@@ -88,20 +88,19 @@ def test_classify_theme():
     assert classify_theme(board_mid, ply=15, moved_piece_square=chess.F3) == "Tactics"
 
 
-@patch("coach.tools.engine_eval.engine_eval")
-def test_analyze_game_color_filtering(mock_engine_eval):
-    # Setup mocked evaluations:
-    # First ply (1. e4): best e4, played e4.
-    # Second ply (1... e5): best e5, played e5.
-    # Third ply (2. Nf3): best Nf3, played Bc4 (mistake).
-    # We mock engine_eval returns:
-    # 1. startpos (before e4): best e2e4, score 30
-    # 2. after e5 (before Bc4): best g1f3, score 35
-    # 3. after Bc4 (eval_after Bc4): best d7d6, score -20 (mover Black POV is -20, so S_played is -(-20) = 20)
-    mock_engine_eval.side_effect = [
-        {"best_uci": "e2e4", "pv_uci": ["e2e4"], "score_cp": 30},
-        {"best_uci": "g1f3", "pv_uci": ["g1f3"], "score_cp": 35},
-        {"best_uci": "d7d6", "pv_uci": ["d7d6"], "score_cp": -20},
+@patch("coach.analysis.engine.Engine")
+@patch("coach.utils.cache.get_cached_engine_eval")
+def test_analyze_game_color_filtering(mock_get_cache, mock_engine_class):
+    mock_get_cache.return_value = None
+    mock_engine = MagicMock()
+    mock_engine_class.from_settings.return_value = mock_engine
+    mock_engine.__enter__.return_value = mock_engine
+
+    from coach.schemas.models import EngineEval
+    mock_engine.analyse_fen.side_effect = [
+        EngineEval(best_uci="e2e4", pv_uci=["e2e4"], score_cp=30),
+        EngineEval(best_uci="g1f3", pv_uci=["g1f3"], score_cp=35),
+        EngineEval(best_uci="d7d6", pv_uci=["d7d6"], score_cp=-20),
     ]
 
     pgn = "1. e4 e5 2. Bc4 *"

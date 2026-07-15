@@ -17,6 +17,9 @@ htmlcov/
 # Databases & local states
 *.db
 coach.db
+backend/data/chroma/
+backend/data/chroma_manual_test/
+backend/.langgraph_api/
 
 # Frontend
 node_modules/
@@ -35,8 +38,8 @@ develop-eggs/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
+/lib/
+/lib64/
 parts/
 sdist/
 var/
