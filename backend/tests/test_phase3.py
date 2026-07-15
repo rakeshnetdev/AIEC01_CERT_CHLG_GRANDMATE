@@ -12,7 +12,7 @@ def test_loaders():
     openings_file = corpus_dir / "openings.tsv"
     openings_chunks = load_openings(openings_file)
     
-    assert len(openings_chunks) == 3
+    assert len(openings_chunks) >= 3
     assert openings_chunks[0]["metadata"]["type"] == "opening"
     assert openings_chunks[0]["metadata"]["name"] == "Sicilian Defense"
     assert "Sicilian Defense" in openings_chunks[0]["text"]

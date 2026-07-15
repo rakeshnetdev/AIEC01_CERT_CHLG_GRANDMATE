@@ -2,3 +2,11 @@ name	pgn	description	moves
 Sicilian Defense	1. e4 c5	The Sicilian Defense is a popular chess opening starting with 1.e4 c5. It leads to sharp, asymmetrical play where Black fights for the center using the c-pawn.	e4 c5
 French Defense	1. e4 e6	The French Defense starts with 1.e4 e6. Black prepares to challenge White's center with d5. It leads to closed, strategic positions.	e4 e6
 Ruy Lopez	1. e4 e5 2. Nf3 Nc6 3. Bb5	The Ruy Lopez starts with 1.e4 e5 2.Nf3 Nc6 3.Bb5. It is one of the oldest and most thoroughly analyzed chess openings, focusing on classical center control.	e4 e5 Nf3 Nc6 Bb5
+Italian Game	1. e4 e5 2. Nf3 Nc6 3. Bc4	The Italian Game starts with 1.e4 e5 2.Nf3 Nc6 3.Bc4. It is one of the oldest opening systems, focusing on rapid piece development, center control, and targeting Black's weak f7-square.	e4 e5 Nf3 Nc6 Bc4
+Caro-Kann Defense	1. e4 c6	The Caro-Kann Defense is a solid, resilient opening starting with 1.e4 c6. Black prepares to support the center with d5, aiming for structural stability and positional play.	e4 c6
+Queen's Gambit	1. d4 d5 2. c4	The Queen's Gambit starts with 1.d4 d5 2.c4. White offers a flank pawn to deflect Black's d5 pawn and establish strong control over the center of the board.	d4 d5 c4
+King's Indian Defense	1. d4 Nf6 2. c4 g6 3. Nc3 Bg7	The King's Indian Defense starts with 1.d4 Nf6 2.c4 g6 3.Nc3 Bg7. A dynamic, hypermodern opening where Black allows White center control early to strike back later from the flanks.	d4 Nf6 c4 g6 Nc3 Bg7
+Scotch Game	1. e4 e5 2. Nf3 Nc6 3. d4	The Scotch Game starts with 1.e4 e5 2.Nf3 Nc6 3.d4. White immediately challenges Black in the center of the board, leading to an open game with rapid tactical skirmishes.	e4 e5 Nf3 Nc6 d4
+Scandinavian Defense	1. e4 d5	The Scandinavian Defense starts with 1.e4 d5. Black immediately attacks White's e4 pawn on the first move, forcing open lines and active queen play.	e4 d5
+Slav Defense	1. d4 d5 2. c4 c6	The Slav Defense starts with 1.d4 d5 2.c4 c6. A highly solid defense against the Queen's Gambit, where Black supports the d5 pawn while keeping the light-squared bishop active.	d4 d5 c4 c6
+English Opening	1. c4	The English Opening starts with 1.c4. A flank opening where White fights for the d5-square from the side, leading to strategic and flexible middlegames.	c4
