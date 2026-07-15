@@ -28,10 +28,12 @@ both trustworthy and **objectively measurable** (0% illegal-move rate in the eva
 ## Features
 - 🎯 Blunder/mistake/inaccuracy detection with centipawn loss (Stockfish ground truth)
 - 💬 Plain-English "why + better plan" grounded in a chess-concept **RAG** corpus
+- 🧭 A compact "Explain this position" section that returns three short, coach-like bullets by default
 - 🌐 **Agentic search** over public data (Lichess Opening Explorer + Tavily)
 - 🧠 **Memory:** per-user learner profile — "last time back-rank was your weak spot…"
 - 🧩 Targeted **drills** from the Lichess puzzle database
 - 📱 Runs in a browser on **phone and laptop**
+- ✨ Adds a lightweight educational layer on top of the engine-grounded review without changing the core analysis flow
 
 ## Architecture (at a glance)
 ```mermaid

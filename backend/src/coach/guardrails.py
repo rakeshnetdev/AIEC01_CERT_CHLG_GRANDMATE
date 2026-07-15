@@ -1,0 +1,43 @@
+import re
+from typing import List
+
+# Simple list of common profanity or unsafe terms to filter for the MVP
+BANNED_WORDS = {"profane", "explicit", "violence", "weapons", "abuse"}
+
+# Safe list of keywords associated with chess, greetings, or learning
+CHESS_KEYWORDS = {
+    "chess", "game", "play", "move", "sicilian", "french", "ruy", "lopez", 
+    "opening", "tactic", "puzzle", "blunder", "mistake", "fork", "pin", "check", 
+    "king", "queen", "rook", "bishop", "knight", "pawn", "pgn", "fen", "eval", 
+    "stockfish", "review", "coaching", "hello", "hi", "hey", "help", "thanks"
+}
+
+def validate_request(text: str) -> None:
+    """Validates user input. Rejects non-chess off-topic inputs or code execution requests."""
+    text_lower = text.lower()
+    
+    # 1. Block code execution / script injection requests
+    code_indicators = ["write a python", "write code", "javascript", "bash script", "programming"]
+    if any(ind in text_lower for ind in code_indicators):
+        raise ValueError("Off-topic request: Programming/code requests are not allowed. Please focus on chess.")
+        
+    # 2. Allow PGN format directly (inherently chess-related)
+    pgn_indicators = ["[event ", "[site ", "[white ", "[black ", "[result "]
+    if any(ind in text_lower for ind in pgn_indicators) or re.search(r'\b1\.\s*[a-gKQRBN]', text):
+        return
+        
+    # 3. Block general off-topic questions (e.g. baking, history)
+    # Check if there is at least one chess/learning keyword present.
+    # Note: If it's a short text or greeting, we allow it. Otherwise, we verify relevance.
+    words = set(re.findall(r'\b\w+\b', text_lower))
+    if words and not words.intersection(CHESS_KEYWORDS):
+        raise ValueError("Off-topic request: Please ask chess-related questions.")
+
+
+def is_safe_output(text: str) -> bool:
+    """Verifies that the narration output is safe and appropriate (kid-friendly)."""
+    text_lower = text.lower()
+    words = set(re.findall(r'\b\w+\b', text_lower))
+    if words.intersection(BANNED_WORDS):
+        return False
+    return True

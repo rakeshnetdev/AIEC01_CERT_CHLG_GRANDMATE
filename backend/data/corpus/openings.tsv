@@ -1,4 +1,65 @@
 name	pgn	description	moves
-Sicilian Defense	1. e4 c5	The Sicilian Defense is a popular chess opening starting with 1.e4 c5. It leads to sharp, asymmetrical play where Black fights for the center using the c-pawn.	e4 c5
-French Defense	1. e4 e6	The French Defense starts with 1.e4 e6. Black prepares to challenge White's center with d5. It leads to closed, strategic positions.	e4 e6
-Ruy Lopez	1. e4 e5 2. Nf3 Nc6 3. Bb5	The Ruy Lopez starts with 1.e4 e5 2.Nf3 Nc6 3.Bb5. It is one of the oldest and most thoroughly analyzed chess openings, focusing on classical center control.	e4 e5 Nf3 Nc6 Bb5
+Italian Game	1. e4 e5 2. Nf3 Nc6 3. Bc4	A classical opening aiming for rapid development and attacking the vulnerable f7 square.	e4 e5 Nf3 Nc6 Bc4
+Ruy Lopez	1. e4 e5 2. Nf3 Nc6 3. Bb5	One of the oldest and most deeply studied openings, putting pressure on Black's knight.	e4 e5 Nf3 Nc6 Bb5
+Scotch Game	1. e4 e5 2. Nf3 Nc6 3. d4	An aggressive choice where White opens the center immediately by fighting for the d4 square.	e4 e5 Nf3 Nc6 d4
+Four Knights Game	1. e4 e5 2. Nf3 Nc6 3. Nc3 Nf6	A symmetrical and highly reliable opening focused on rapid, natural piece development.	e4 e5 Nf3 Nc6 Nc3 Nf6
+Petrov's Defense	1. e4 e5 2. Nf3 Nf6	A deeply solid counter-attacking defense where Black mirrors White's attack on the e-pawn.	e4 e5 Nf3 Nf6
+King's Gambit	1. e4 e5 2. f4	A romantic, highly tactical opening where White sacrifices a pawn early for rapid attack.	e4 e5 f4
+Vienna Game	1. e4 e5 2. Nc3	A versatile opening where White keeps options open, often leading to an f4 pawn push later.	e4 e5 Nc3
+Philidor Defense	1. e4 e5 2. Nf3 d6	A passive but solid defensive choice for Black, securing the e5 pawn at the cost of the dark bishop.	e4 e5 Nf3 d6
+Bishop's Opening	1. e4 e5 2. Bc4	White develops the light-squared bishop early, keeping options open to push the f-pawn or play Nf3.	e4 e5 Bc4
+Center Game	1. e4 e5 2. d4 exd4 3. Qxd4	White eliminates Black's e5 pawn instantly, bringing the queen out early to dominate space.	e4 e5 d4 exd4 Qxd4
+Danish Gambit	1. e4 e5 2. d4 exd4 3. c3	An ultra-aggressive line where White sacrifices two pawns for maximum development and attacking lines.	e4 e5 d4 exd4 c3
+Evans Gambit	1. e4 e5 2. Nf3 Nc6 3. Bc4 Bc5 4. b4	A classic sharp sacrifice designed to deflect Black's bishop and build a powerful pawn center.	e4 e5 Nf3 Nc6 Bc4 Bc5 b4
+Giuoco Piano	1. e4 e5 2. Nf3 Nc6 3. Bc4 Bc5	The quiet game, focusing on careful development and controlling central squares systematically.	e4 e5 Nf3 Nc6 Bc4 Bc5
+Two Knights Defense	1. e4 e5 2. Nf3 Nc6 3. Bc4 Nf6	A counter-attacking choice for Black that often leads to sharp, tactical complications.	e4 e5 Nf3 Nc6 Bc4 Nf6
+Fried Liver Attack	1. e4 e5 2. Nf3 Nc6 3. Bc4 Nf6 4. Ng5 d5 5. exd5 Nxd5 6. Nxf7	A wild, tactical sacrificial line targeting Black's king early in the opening.	e4 e5 Nf3 Nc6 Bc4 Nf6 Ng5 d5 exd5 Nxd5 Nxf7
+Max Lange Attack	1. e4 e5 2. Nf3 Nc6 3. Bc4 Nf6 4. d4 exd4 5. O-O Bc5 6. e5	A sharp, complex attacking continuation arising from the Two Knights Defense or Scotch Gambit.	e4 e5 Nf3 Nc6 Bc4 Nf6 d4 exd4 O-O Bc5 e5
+Scotch Gambit	1. e4 e5 2. Nf3 Nc6 3. d4 exd4 4. Bc4	White delays recapturing on d4 to focus on rapid development and kingside attacking prospects.	e4 e5 Nf3 Nc6 d4 exd4 Bc4
+Goring Gambit	1. e4 e5 2. Nf3 Nc6 3. d4 exd4 4. c3	Similar to the Danish Gambit, White offers a pawn for active piece activity and open files.	e4 e5 Nf3 Nc6 d4 exd4 c3
+Latvian Gambit	1. e4 e5 2. Nf3 f5	An aggressive and risky counter-gambit by Black, aiming for immediate tactical chaos.	e4 e5 Nf3 f5
+Elephant Gambit	1. e4 e5 2. Nf3 d5	An uncommon, surprise counter-gambit where Black sacrifices a central pawn to grab the initiative.	e4 e5 Nf3 d5
+Ponziani Opening	1. e4 e5 2. Nf3 Nc6 3. c3	An old opening where White prepares a strong pawn center with a quick d2-d4 push.	e4 e5 Nf3 Nc6 c3
+Hungarian Defense	1. e4 e5 2. Nf3 Nc6 3. Bc4 Be7	A quiet, defensive choice by Black to avoid the sharp lines of the Italian Game.	e4 e5 Nf3 Nc6 Bc4 Be7
+Three Knights Opening	1. e4 e5 2. Nf3 Nc6 3. Nc3	White develops a second knight before Black, keeping flexible options for central expansion.	e4 e5 Nf3 Nc6 Nc3
+Konstantinopolsky Opening	1. e4 e5 2. Nf3 Nc6 3. g3	A rare, positional line where White aims to fianchetto the light-squared bishop.	e4 e5 Nf3 Nc6 g3
+Inverted Hanham Opening	1. e4 e5 2. Nf3 Nc6 3. d3	White plays a defensive setup similar to Black's Philidor, aiming for a slow positional game.	e4 e5 Nf3 Nc6 d3
+Sicilian Defense	1. e4 c5	The most popular response to 1.e4, creating sharp, asymmetrical play for the center.	e4 c5
+French Defense	1. e4 e6	A solid defensive opening where Black creates a strong pawn chain but restricts the light bishop.	e4 e6
+Caro-Kann Defense	1. e4 c6	A highly reliable defense focusing on a solid pawn structure and safe king safety.	e4 c6
+Caro-Kann Advance Variation	1. e4 c6 2. d4 d5 3. e5	White pushes the e-pawn early to gain space and cramp Black's development options.	e4 c6 d4 d5 e5
+Caro-Kann Classical Variation	1. e4 c6 2. d4 d5 3. Nc3 dxe4 4. Nxe4 Bf5	The traditional main line leading to solid, strategic endgames for both sides.	e4 c6 d4 d5 Nc3 dxe4 Nxe4 Bf5
+Caro-Kann Exchange Variation	1. e4 c6 2. d4 d5 3. exd5 cxd5	White simplifies the central tension immediately, leading to a symmetrical, open pawn structure.	e4 c6 d4 d5 exd5 cxd5
+Panov-Botvinnik Attack	1. e4 c6 2. d4 d5 3. exd5 cxd5 4. c4	An aggressive line against the Caro-Kann that creates an isolated queen's pawn structure.	e4 c6 d4 d5 exd5 cxd5 c4
+Scandinavian Defense	1. e4 d5	An immediate counter in the center, forcing White to trade pawns on move two.	e4 d5
+Pirc Defense	1. e4 d6 2. d4 Nf6 3. Nc3 g6	A hypermodern defense where Black allows White a big center to counter-attack it later.	e4 d6 d4 Nf6 Nc3 g6
+Alekhine's Defense	1. e4 Nf6	Black deliberately provokes White's center pawns forward with the plan to undermine them later.	e4 e5 Nf6
+Modern Defense	1. e4 g6	A flexible hypermodern setup where Black fianchettos the dark bishop to pressure the center indirectly.	e4 g6
+Nimzowitsch Defense	1. e4 Nc6	An uncommon defense where Black blocks the c-pawn early to challenge the e4 square directly.	e4 Nc6
+Owen's Defense	1. e4 b6	Black prepares to fianchetto the light-squared bishop early to contest the e4 square.	e4 b6
+St. George Defense	1. e4 a6	An eccentric defense where Black prepares b5 to challenge White's spatial dominance on the queenside.	e4 a6
+Sicilian Najdorf	1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 a6	One of the most complex, legendary, and aggressive variations in all of chess opening theory.	e4 c5 Nf3 d6 d4 cxd4 Nxd4 Nf6 Nc3 a6
+Sicilian Dragon	1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 g6	A sharp variation where Black fianchettos the bishop along the powerful h1-a8 diagonal.	e4 c5 Nf3 d6 d4 cxd4 Nxd4 Nf6 Nc3 g6
+Sicilian Scheveningen	1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 e6	Black sets up a solid small center with e6 and d6, offering great counter-attacking potential.	e4 c5 Nf3 d6 d4 cxd4 Nxd4 Nf6 Nc3 e6
+Sicilian Classical	1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 Nc6	Black develops naturally, putting pressure on White's centralized d4 knight immediately.	e4 c5 Nf3 d6 d4 cxd4 Nxd4 Nf6 Nc3 Nc6
+Sicilian Sveshnikov	1. e4 c5 2. Nf3 Nc6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 e5	Black aggressively forces White's knight away while accepting a backward d-pawn for dynamic activity.	e4 c5 Nf3 Nc6 d4 cxd4 Nxd4 Nf6 Nc3 e5
+Sicilian Taimanov	1. e4 c5 2. Nf3 Nc6 3. d4 cxd4 4. Nxd4 e6	A highly flexible variation where Black retains the option to move the knight or queen next.	e4 c5 Nf3 Nc6 d4 cxd4 Nxd4 e6
+Sicilian Kan	1. e4 c5 2. Nf3 e6 3. d4 cxd4 4. Nxd4 a6	A quiet, patient line where Black prevents White pieces from landing on the b5 square.	e4 c5 Nf3 e6 d4 cxd4 Nxd4 a6
+Alapin Sicilian	1. e4 c5 2. c3	White plays c3 to prepare a strong d4 pawn push, avoiding main-line open Sicilian theory.	e4 c5 c3
+Smith-Morra Gambit	1. e4 c5 2. d4 cxd4 3. c3	White offers a pawn for quick development and open c and d-files against the Sicilian.	e4 c5 d4 cxd4 c3
+Closed Sicilian	1. e4 c5 2. Nc3	White avoids opening the center early, opting for a slower kingside expansion strategy.	e4 c5 Nc3
+Grand Prix Attack	1. e4 c5 2. f4	An aggressive kingside attacking setup for White utilizing an early f4 pawn push.	e4 c5 f4
+French Advance Variation	1. e4 e6 2. d4 d5 3. e5	White locks the center to gain spatial advantages, leading to intense queenside maneuvering.	e4 e6 d4 d5 e5
+French Classical Variation	1. e4 e6 2. d4 d5 3. Nc3 Nf6	The traditional main line where White develops naturally and Black fights for the center.	e4 e6 d4 d5 Nc3 Nf6
+French Winawer Variation	1. e4 e6 2. d4 d5 3. Nc3 Bb4	A sharp variation where Black pins White's knight to create immediate central counterplay.	e4 e6 d4 d5 Nc3 Bb4
+French Tarrasch Variation	1. e4 e6 2. d4 d5 3. Nd2	White avoids the Winawer pin by developing the knight to d2, maintaining a flexible center.	e4 e6 d4 d5 Nd2
+French Exchange Variation	1. e4 e6 2. d4 d5 3. exd5 exd5	White symmetricalizes the pawn structure, leading to a much calmer, simplified position.	e4 e6 d4 d5 exd5 exd5
+Queen's Gambit	1. d4 d5 2. c4	White offers a flank pawn to gain control of the center and open queenside lines.	d4 d5 c4
+Queen's Gambit Accepted	1. d4 d5 2. c4 dxc4	Black takes the offered pawn, choosing to surrender the center temporarily for active piece play.	d4 d5 c4 dxc4
+Queen's Gambit Declined	1. d4 d5 2. c4 e6	Black supports the d5 pawn with e6, building a solid, classical defensive fortress.	d4 d5 c4 e6
+Slav Defense	1. d4 d5 2. c4 c6	A highly resilient defense where Black supports d5 with c6, leaving the light bishop free.	d4 d5 c4 c6
+Semi-Slav Defense	1. d4 d5 2. c4 c6 3. Nf3 Nf6 4. Nc3 e6	A complex blend of the Slav and Orthodox defenses, leading to sharp, rich tactical middlegames.	d4 d5 c4 c6 Nf3 Nf6 Nc3 e6
+Albin Countergambit	1. d4 d5 2. c4 e5	An aggressive central counter-gambit by Black designed to surprise and disrupt White's plans.	d4 d5 c4 e5
+Chigorin Defense	1. d4 d5 2. c4 Nc6	Black breaks symmetrical rules by developing the knight before the c-pawn, creating concrete tactical lines.	d4 d5 c4 Nc6
+Colle System	1. d4 d5 2. Nf3 Nf6 3. e3	A solid, easily playable opening system for White focusing on harmonious, safe development.	d4 d5 Nf3 Nf6 e3
+London System	1. d4 d5 2. Bf4	A highly popular, solid system where White develops the dark bishop early before locking the center.	d4 d5 Bf4

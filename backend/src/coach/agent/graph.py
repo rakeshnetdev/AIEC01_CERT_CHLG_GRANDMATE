@@ -31,10 +31,16 @@ def fetch_and_analyse_node(state: CoachState) -> dict:
     """Ingests or parses the game, then runs the per-move Stockfish centipawn engine analysis."""
     logger.info("Running fetch_and_analyse node")
     game = state.get("game")
+    if isinstance(game, dict):
+        game = Game(**game)
     pgn = state.get("pgn")
     username = state.get("username")
     source = state.get("source")
     
+    if game and state.get("analyses"):
+        logger.info("Game and analyses already present in state, skipping analysis.")
+        return {}
+        
     if not game:
         if pgn:
             game = parse_pgn(pgn, source=source or "upload", username=username or "user")
@@ -43,6 +49,8 @@ def fetch_and_analyse_node(state: CoachState) -> dict:
             if not games:
                 raise ValueError(f"No games found for user {username} on {source}")
             game = games[0]
+            if isinstance(game, dict):
+                game = Game(**game)
         else:
             raise ValueError("No game, PGN, or username/source provided for analysis.")
             
@@ -61,8 +69,22 @@ def fetch_and_analyse_node(state: CoachState) -> dict:
 def retrieve_rag_context_node(state: CoachState) -> dict:
     """Collects tactical and opening terms from the analyses, querying ChromaDB for context."""
     logger.info("Running retrieve_rag_context node")
+    if state.get("rag_context"):
+        logger.info("RAG context already present in state, skipping retrieval.")
+        return {}
+        
     game = state.get("game")
+    if isinstance(game, dict):
+        game = Game(**game)
+        
     analyses = state.get("analyses", [])
+    processed_analyses = []
+    for ma in analyses:
+        if isinstance(ma, dict):
+            processed_analyses.append(MoveAnalysis(**ma))
+        else:
+            processed_analyses.append(ma)
+    analyses = processed_analyses
     
     if not game:
         return {"rag_context": ""}
@@ -106,7 +128,18 @@ def narrator_agent_node(state: CoachState) -> dict:
     """Formats the narrator prompt, passes it to the LiteLLM gateway, and saves the narration."""
     logger.info("Running narrator_agent node")
     game = state.get("game")
+    if isinstance(game, dict):
+        game = Game(**game)
+        
     analyses = state.get("analyses", [])
+    processed_analyses = []
+    for ma in analyses:
+        if isinstance(ma, dict):
+            processed_analyses.append(MoveAnalysis(**ma))
+        else:
+            processed_analyses.append(ma)
+    analyses = processed_analyses
+    
     rag_context = state.get("rag_context", "")
     
     if not game:
