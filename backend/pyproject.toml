@@ -38,6 +38,9 @@ dev = [
 requires = ["setuptools>=61.0.0"]
 build-backend = "setuptools.build_meta"
 
+[tool.setuptools.packages.find]
+where = ["src"]
+
 [tool.uv]
 required-environments = [
     "sys_platform == 'darwin' and platform_machine == 'x86_64'",

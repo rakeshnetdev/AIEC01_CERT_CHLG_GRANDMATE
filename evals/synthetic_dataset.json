@@ -1,0 +1,101 @@
+[
+  {
+    "id": 1,
+    "fen_before": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+    "played_uci": "e2e4",
+    "description": "Standard opening move",
+    "expected_best_uci": "e2e4",
+    "expected_cpl": 0,
+    "expected_label": "ok",
+    "score_before": 47,
+    "score_after": -37
+  },
+  {
+    "id": 2,
+    "fen_before": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+    "played_uci": "a2a4",
+    "description": "Passive opening move",
+    "expected_best_uci": "e2e4",
+    "expected_cpl": 63,
+    "expected_label": "inaccuracy",
+    "score_before": 48,
+    "score_after": 15
+  },
+  {
+    "id": 3,
+    "fen_before": "r1bqkbnr/pppp1ppp/2n5/4p3/2B1P3/5Q2/PPPP1PPP/RNB1K1NR b KQkq - 3 3",
+    "played_uci": "h7h6",
+    "description": "Ignoring checkmate threat on f7 (blunder)",
+    "expected_best_uci": "g8f6",
+    "expected_cpl": 10012,
+    "expected_label": "blunder",
+    "score_before": 12,
+    "score_after": 10000
+  },
+  {
+    "id": 4,
+    "fen_before": "r1bqkbnr/pppp1ppp/2n5/4p3/2B1P3/5Q2/PPPP1PPP/RNB1K1NR b KQkq - 3 3",
+    "played_uci": "g7g6",
+    "description": "Defending checkmate threat with g6 (ok)",
+    "expected_best_uci": "g8f6",
+    "expected_cpl": 10008,
+    "expected_label": "blunder",
+    "score_before": 8,
+    "score_after": 10000
+  },
+  {
+    "id": 5,
+    "fen_before": "r1bqkbnr/pppp1ppp/2n5/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R b KQkq - 3 3",
+    "played_uci": "g8f6",
+    "description": "Two Knights defense (ok)",
+    "expected_best_uci": "f8c5",
+    "expected_cpl": 24,
+    "expected_label": "ok",
+    "score_before": -24,
+    "score_after": 48
+  },
+  {
+    "id": 6,
+    "fen_before": "r1bqkbnr/ppp2ppp/2np4/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 0 4",
+    "played_uci": "f3e5",
+    "description": "Hanging knight by capturing defended pawn (blunder)",
+    "expected_best_uci": "b1c3",
+    "expected_cpl": 419,
+    "expected_label": "blunder",
+    "score_before": 46,
+    "score_after": 373
+  },
+  {
+    "id": 7,
+    "fen_before": "r3k2r/ppq2ppp/2nbbn2/3pp3/3PP3/3BBN2/PPQ2PPP/R3K2R w KQkq - 4 10",
+    "played_uci": "d4e5",
+    "description": "Natural pawn center trade (ok)",
+    "expected_best_uci": "d4e5",
+    "expected_cpl": 0,
+    "expected_label": "ok",
+    "score_before": -418,
+    "score_after": 432
+  },
+  {
+    "id": 8,
+    "fen_before": "8/8/8/8/p7/k7/P7/K7 w - - 0 1",
+    "played_uci": "a1b1",
+    "description": "Standard king move in simple endgame (ok)",
+    "expected_best_uci": "a1b1",
+    "expected_cpl": 0,
+    "expected_label": "ok",
+    "score_before": -1,
+    "score_after": 0
+  },
+  {
+    "id": 9,
+    "fen_before": "r1b1k2r/ppq2ppp/2nbpn2/3p4/3PP3/P1NB1N2/1PQ2PPP/R1B1K2R w KQkq - 1 9",
+    "played_uci": "e4e5",
+    "description": "Forking knight and bishop (ok)",
+    "expected_best_uci": "e4e5",
+    "expected_cpl": 0,
+    "expected_label": "ok",
+    "score_before": 322,
+    "score_after": -344
+  }
+]
