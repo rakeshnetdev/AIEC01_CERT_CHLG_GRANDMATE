@@ -87,6 +87,28 @@ def test_classify_theme():
     board_mid = chess.Board(fen="r1bqkbnr/pppp1ppp/2n5/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3")
     assert classify_theme(board_mid, ply=15, moved_piece_square=chess.F3) == "Tactics"
 
+    # 6. En Passant theme
+    board_ep = chess.Board(fen="rnbqkbnr/ppp1p1pp/8/3pPp2/8/8/PPPP1PPP/RNBQKBNR w KQkq f6 0 3")
+    ep_move = chess.Move.from_uci("e5f6")
+    assert classify_theme(board_ep, ply=15, moved_piece_square=chess.E5, move=ep_move) == "En Passant"
+
+    # 7. Promotion theme
+    board_prom = chess.Board(fen="8/P7/8/8/8/8/8/k3K3 w - - 0 1")
+    prom_move = chess.Move.from_uci("a7a8q")
+    assert classify_theme(board_prom, ply=15, moved_piece_square=chess.A7, move=prom_move) == "Promotion"
+
+    # 8. Underpromotion theme
+    under_move = chess.Move.from_uci("a7a8n")
+    assert classify_theme(board_prom, ply=15, moved_piece_square=chess.A7, move=under_move) == "Underpromotion"
+
+    # 9. Fork theme
+    board_fork = chess.Board(fen="8/2q1k3/8/3N4/8/8/8/4K3 w - - 0 1")
+    assert classify_theme(board_fork, ply=15, moved_piece_square=chess.D5) == "Fork"
+
+    # 10. Double Check theme
+    board_dc = chess.Board(fen="4k3/8/5N2/8/8/8/8/4R3 b - - 0 1")
+    assert classify_theme(board_dc, ply=15, moved_piece_square=chess.F6) == "Double Check"
+
 
 @patch("coach.analysis.engine.Engine")
 @patch("coach.utils.cache.get_cached_engine_eval")
