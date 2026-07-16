@@ -13,7 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from config.settings import get_settings
-from coach.schemas.models import Game, MoveAnalysis, Explanation, Weakness, Drill, CoachReport, Severity, Source
+from coach.schemas.models import Game, MoveAnalysis, Explanation, Weakness, Drill, CoachReport, Severity, Source, DeveloperInsight
 from coach.agent.graph import compile_coach_graph
 from coach.guardrails import validate_request, is_safe_output
 from langchain_core.messages import HumanMessage, AIMessage
@@ -204,6 +204,41 @@ def review_game(request: ReviewRequest):
     
     # Estimate token cost (mock)
     cost = 0.002
+
+    # Reconstruct developer insights
+    rag_queries = []
+    if game.opening_name:
+        rag_queries.append(game.opening_name)
+    for ma in analyses:
+        if ma.label != "ok" and ma.theme:
+            rag_queries.append(ma.theme)
+
+    from coach.agent.prompts import NARRATOR_SYSTEM_PROMPT
+    summary_lines = []
+    for ma in analyses:
+        summary_lines.append(
+            f"- Ply {ma.ply} ({ma.played_san} played, best was {ma.best_san}). "
+            f"Loss: {ma.centipawn_loss}. Severity: {ma.label}. Theme: {ma.theme or 'None'}."
+        )
+    move_analyses_summary = "\n".join(summary_lines)
+    system_prompt = NARRATOR_SYSTEM_PROMPT.format(
+        white_player=game.white,
+        black_player=game.black,
+        user_color=game.user_color,
+        opening_name=game.opening_name or "Unknown Opening",
+        result=game.result,
+        move_analyses_summary=move_analyses_summary,
+        rag_context=final_state.get("rag_context", "")
+    )
+
+    dev_insight = DeveloperInsight(
+        graph_state="finished",
+        active_nodes=["fetch_and_analyse", "retrieve_rag_context", "narrator_agent"],
+        rag_queries=rag_queries,
+        rag_context=final_state.get("rag_context", ""),
+        raw_prompt=system_prompt,
+        stockfish_raw=analyses
+    )
     
     return CoachReport(
         username=request.username or game.white,
@@ -214,7 +249,8 @@ def review_game(request: ReviewRequest):
         drills=drills,
         position_explanation=position_explanation,
         latency_s=round(latency, 2),
-        cost_usd=cost
+        cost_usd=cost,
+        developer_insight=dev_insight
     )
 
 

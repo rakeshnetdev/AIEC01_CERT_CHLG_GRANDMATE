@@ -23,6 +23,30 @@ export interface Drill {
   url: string;
 }
 
+export interface MoveAnalysis {
+  ply: number;
+  fen_before: string;
+  played_uci: string;
+  played_san: string;
+  best_uci: string;
+  best_san: string;
+  eval_before_cp: number;
+  eval_after_cp: number;
+  centipawn_loss: number;
+  label: Severity;
+  theme?: string;
+  pv_san: string[];
+}
+
+export interface DeveloperInsight {
+  graph_state: string;
+  active_nodes: string[];
+  rag_queries: string[];
+  rag_context: string;
+  raw_prompt: string;
+  stockfish_raw: MoveAnalysis[];
+}
+
 export interface CoachReport {
   username: string;
   games_reviewed: number;
@@ -33,6 +57,7 @@ export interface CoachReport {
   position_explanation: string[];
   latency_s: number;
   cost_usd: number;
+  developer_insight?: DeveloperInsight;
 }
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:9392";
