@@ -10,7 +10,6 @@
 | Document | Purpose | Location |
 | :--- | :--- | :--- |
 | 📋 **Full Deliverables** | Core challenge deliverables and self-assessment checklists | [docs/Deliverables.md](./docs/Deliverables.md) |
-| 🧠 **Developer Notes** | Detailed architectural specifications, memory models, and RAG evaluation data | [final_docs/my-notes.md](./final_docs/my-notes.md) |
 | 🏗️ **System Architecture** | Subsystem flowcharts and deployment topologies | [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) |
 | 🗺️ **Implementation Plan** | Chronological development phases and engineering logs | [docs/PLAN.md](./docs/PLAN.md) |
 
