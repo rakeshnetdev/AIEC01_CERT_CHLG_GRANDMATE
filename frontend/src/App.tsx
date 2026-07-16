@@ -23,6 +23,7 @@ export default function App() {
   const [retrieverType, setRetrieverType] = useState<"hybrid" | "dense" | "sparse">("hybrid");
   const [praggGames, setPraggGames] = useState<PraggGame[]>([]);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [theme, setTheme] = useState<"dark" | "light">("dark");
   
   // Loading & error states
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -155,9 +156,9 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-[#060814] text-slate-100 flex flex-col">
+    <div className={`min-h-screen flex flex-col transition-colors duration-300 ${theme === "dark" ? "bg-[#060814] text-slate-100 dark-theme" : "bg-[#f8fafc] text-slate-900 light-theme"}`}>
       {/* Top Navigation Header */}
-      <Header showDevInsights={showDevInsights} setShowDevInsights={setShowDevInsights} hasReport={!!report} />
+      <Header showDevInsights={showDevInsights} setShowDevInsights={setShowDevInsights} hasReport={!!report} theme={theme} setTheme={setTheme} />
 
       {/* Main Container */}
       <main className={`flex-1 w-full p-6 md:p-10 flex flex-col gap-10 ${report ? "" : "max-w-7xl mx-auto"}`}>
