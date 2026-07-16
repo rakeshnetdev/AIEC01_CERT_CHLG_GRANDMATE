@@ -1,7 +1,8 @@
 # ♟️ Grandmate: AI-Powered Chess Analysis & Personalized Helper
 
-> **Certification Challenge Project** — AI Engineering Bootcamp  
 > An intelligent, engine-grounded chess analysis agent and conversational coaching helper powered by **LangGraph** and **Agentic RAG**.
+> 
+> *Naming Note: The project name **Grandmate** (originally conceived as **GameMate**) is a play on two core chess terms—**Grandmaster** (expertise) and **Checkmate** (the game goal)—coupled with the colloquial sense of a friendly companion (**mate**).*
 
 ---
 

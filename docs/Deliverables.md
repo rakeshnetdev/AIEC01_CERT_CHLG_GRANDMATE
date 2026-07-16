@@ -16,23 +16,20 @@ This document compiles the complete set of deliverables and self-assessment reco
 
 ## 1. Problem Definition & Target Audience
 
-### 1.1 Naming Rationale: Grandmate (GameMate)
-The project name **Grandmate** (originally conceived as **GameMate**) is a play on two central chess concepts: **Grandmaster** (the ultimate title of chess expertise) and **Checkmate** (the defining goal of the game). The suffix **"-mate"** also functions in its colloquial sense as a friendly companion or partner. Grandmate thus positions itself not merely as an cold, analytical software tool, but as an interactive, conversational companion helping amateur players learn to analyze their games with Grandmaster-level clarity.
-
-### 1.2 Problem Statement
+### 1.1 Problem Statement
 > Current chess software tells players **that** their moves are bad using abstract mathematical scores, but fails to explain **why** they were errors in simple, human language, leaving players, parents, and coaches guessing at how to improve.
 
-### 1.3 Target Audience & Users
+### 1.2 Target Audience & Users
 * **Primary Audience (Amateur Players):** Online players rated roughly **800–1800** on Lichess or Chess.com who play regularly and want to improve, but get frustrated by raw engine numbers (`-2.60`) that offer no plan.
 * **Secondary Audience (Parents of Juniors):** Parents who want to support their child's chess education but are completely locked out of the learning process because chess notations and statistics read like code.
 * **Tertiary Audience (Chess Coaches & Academies):** Coaches who instruct dozens of students and need a simple dashboard to track their students' historical weaknesses and auto-generate drills.
 
-### 1.4 Why This is a Problem
+### 1.3 Why This is a Problem
 After a loss, the player wants to understand their mistakes and turn them into a concrete lesson. Today they open the platform's computer analysis, click through an evaluation bar, and see centipawn numbers (e.g. "−2.6") with no explanation. They may Google the opening, ask a Discord server, or guess.
 
 A human coach could explain it — but coaches cost **$30–100/hour**, strong ones are scarce, and they review perhaps one game per session. So the player is left with raw numbers they cannot interpret, no personalization, no guidance on what learning topics to focus on, and no memory of the mistakes they keep repeating. Parents are locked out of supporting their children because chess statistics look like code, and coaches cannot manually track recurring weakness logs for dozens of students over months of play. Ultimately, the player is left guessing and plays the next game making the same errors.
 
-### 1.5 Current Workflow & Bottlenecks
+### 1.4 Current Workflow & Bottlenecks
 The diagram below illustrates how amateur chess players attempt to learn from their games today:
 
 ```mermaid
@@ -56,8 +53,11 @@ flowchart LR
 
 ## 2. Proposed Solution & Architecture
 
-### 2.1 Solution Description
-> A browser-based agentic analysis helper that fetches your games, uses Stockfish to find every mistake, retrieves chess concepts to explain each in plain English (grounded so it never invents lines), remembers your recurring weaknesses across sessions, and recommends targeted drills.
+### 2.1 Solution Description & Naming Rationale
+* **Proposed Solution:**
+  > A browser-based agentic analysis helper that fetches your games, uses Stockfish to find every mistake, retrieves chess concepts to explain each in plain English (grounded so it never invents lines), remembers your recurring weaknesses across sessions, and recommends targeted drills.
+* **Naming Choice (Grandmate / GameMate):**
+  The project name **Grandmate** (originally conceived as **GameMate**) is a play on two central chess concepts: **Grandmaster** (the ultimate title of chess expertise) and **Checkmate** (the defining goal of the game). The suffix **"-mate"** also functions in its colloquial sense as a friendly companion or partner. Grandmate thus positions itself not merely as a cold, analytical software tool, but as an interactive, conversational companion helping amateur players learn to analyze their games with Grandmaster-level clarity.
 
 ### 2.2 System Infrastructure Architecture
 The following infrastructure diagram outlines the decoupled full-stack architecture of the prototype:
