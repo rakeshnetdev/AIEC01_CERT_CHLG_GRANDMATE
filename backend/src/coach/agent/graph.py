@@ -25,6 +25,7 @@ class CoachState(TypedDict):
     analyses: List[MoveAnalysis]
     rag_context: str
     output: str
+    retriever_type: Optional[str]
 
 
 def fetch_and_analyse_node(state: CoachState) -> dict:
@@ -108,11 +109,14 @@ def retrieve_rag_context_node(state: CoachState) -> dict:
     from config.settings import get_settings
     settings = get_settings()
     
+    # Retrieve active retriever type from state or default settings
+    r_type = state.get("retriever_type") or settings.retriever_type
+    
     rag_parts = []
     # Query ChromaDB for top matched concepts (limit to top 3 queries)
     for q in unique_queries[:3]:
         try:
-            results = retrieve_context(q, persist_dir=settings.chroma_db_path, limit=1)
+            results = retrieve_context(q, persist_dir=settings.chroma_db_path, limit=1, retriever_type=r_type)
             for r in results:
                 rag_parts.append(r["text"])
         except Exception as e:

@@ -5,9 +5,10 @@ import re
 import pandas as pd
 from typing import List, Dict
 
-# Inject backend/src/ to PYTHONPATH
-backend_src = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "backend", "src"))
-sys.path.append(backend_src)
+# Inject backend/ and backend/src/ to PYTHONPATH
+backend_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "backend"))
+sys.path.append(backend_dir)
+sys.path.append(os.path.join(backend_dir, "src"))
 
 from coach.rag.vector_db import get_collection
 from coach.rag.pipeline import retrieve_context

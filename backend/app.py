@@ -53,6 +53,7 @@ class ReviewRequest(BaseModel):
     max_games: int = 1
     pgn: Optional[str] = None
     session_id: Optional[str] = None
+    retriever_type: Optional[str] = "hybrid"
 
 
 class ChatRequest(BaseModel):
@@ -255,7 +256,8 @@ def review_game(request: ReviewRequest):
         "game": None,
         "analyses": [],
         "rag_context": "",
-        "output": ""
+        "output": "",
+        "retriever_type": request.retriever_type
     }
     
     thread_id = request.session_id or f"review_{request.username or 'anonymous'}"

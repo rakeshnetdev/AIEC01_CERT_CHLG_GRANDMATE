@@ -1,7 +1,7 @@
 import os
 import logging
 from pathlib import Path
-from typing import List, Dict
+from typing import List, Dict, Optional
 from coach.rag.loader import load_openings, load_markdown_notes
 from coach.rag.vector_db import get_collection, reset_collection
 
@@ -90,9 +90,13 @@ def get_bm25_index(collection) -> tuple | None:
     return _BM25_CACHE
 
 
-def retrieve_context(query: str, persist_dir: str, limit: int = 2) -> List[Dict]:
-    """Retrieves top semantically + lexically matching chunks from ChromaDB and BM25 using RRF."""
-    logger.info(f"Querying vector store (hybrid) at {persist_dir} with: '{query}'")
+def retrieve_context(query: str, persist_dir: str, limit: int = 2, retriever_type: Optional[str] = None) -> List[Dict]:
+    """Retrieves top matching chunks from ChromaDB and/or BM25 based on the retriever_type."""
+    if not retriever_type:
+        from config.settings import get_settings
+        retriever_type = get_settings().retriever_type
+
+    logger.info(f"Querying vector store ({retriever_type}) at {persist_dir} with: '{query}'")
     
     collection = get_collection(persist_dir)
     
@@ -108,64 +112,85 @@ def retrieve_context(query: str, persist_dir: str, limit: int = 2) -> List[Dict]
     # We query ChromaDB for top 10 candidates (or len(doc_ids) if smaller)
     vector_k = min(10, len(doc_ids))
     dense_results = []
-    try:
-        query_results = collection.query(
-            query_texts=[query],
-            n_results=vector_k
-        )
-        if query_results and "documents" in query_results and query_results["documents"]:
-            q_docs = query_results["documents"][0]
-            q_ids = query_results["ids"][0] if "ids" in query_results else []
-            for i in range(len(q_docs)):
-                dense_results.append(q_ids[i])
-    except Exception as e:
-        logger.error(f"Error querying ChromaDB vector search: {e}")
-        
+    if retriever_type in ("dense", "hybrid"):
+        try:
+            query_results = collection.query(
+                query_texts=[query],
+                n_results=vector_k
+            )
+            if query_results and "documents" in query_results and query_results["documents"]:
+                q_docs = query_results["documents"][0]
+                q_ids = query_results["ids"][0] if "ids" in query_results else []
+                for i in range(len(q_docs)):
+                    dense_results.append(q_ids[i])
+        except Exception as e:
+            logger.error(f"Error querying ChromaDB vector search: {e}")
+            
     # 3. Sparse Lexical Search (BM25)
-    import re
-    def tokenize(text: str) -> List[str]:
-        return re.findall(r"[a-z0-9]+", text.lower())
-        
-    tokenized_query = tokenize(query)
-    bm25_scores = bm25.get_scores(tokenized_query)
-    
-    # Sort docs by BM25 score desc
-    bm25_k = min(10, len(doc_ids))
-    sorted_indices = sorted(range(len(bm25_scores)), key=lambda idx: bm25_scores[idx], reverse=True)
-    
     sparse_results = []
-    for idx in sorted_indices[:bm25_k]:
-        # Only include if score > 0 to avoid matching empty terms
-        if bm25_scores[idx] > 0.0:
-            sparse_results.append(doc_ids[idx])
+    if retriever_type in ("sparse", "hybrid"):
+        import re
+        def tokenize(text: str) -> List[str]:
+            return re.findall(r"[a-z0-9]+", text.lower())
             
-    # 4. Reciprocal Rank Fusion (RRF)
-    rrf_scores = {}
-    rrf_constant = 60
-    
-    # Dense list scoring
-    for rank, doc_id in enumerate(dense_results, start=1):
-        rrf_scores[doc_id] = rrf_scores.get(doc_id, 0.0) + 1.0 / (rrf_constant + rank)
+        tokenized_query = tokenize(query)
+        bm25_scores = bm25.get_scores(tokenized_query)
         
-    # Sparse list scoring
-    for rank, doc_id in enumerate(sparse_results, start=1):
-        rrf_scores[doc_id] = rrf_scores.get(doc_id, 0.0) + 1.0 / (rrf_constant + rank)
+        # Sort docs by BM25 score desc
+        bm25_k = min(10, len(doc_ids))
+        sorted_indices = sorted(range(len(bm25_scores)), key=lambda idx: bm25_scores[idx], reverse=True)
         
-    # Sort by RRF score descending
-    sorted_rrf = sorted(rrf_scores.items(), key=lambda item: item[1], reverse=True)
-    
-    # If RRF results are empty, fall back to top vector results
-    if not sorted_rrf:
-        logger.warning("RRF fusion returned empty. Falling back to dense vector results.")
-        sorted_rrf = [(doc_id, 1.0) for doc_id in dense_results]
-        
-    # Take top `limit` results
+        for idx in sorted_indices[:bm25_k]:
+            # Only include if score > 0 to avoid matching empty terms
+            if bm25_scores[idx] > 0.0:
+                sparse_results.append(doc_ids[idx])
+                
+    # 4. Routing & Ranking
     final_results = []
-    for doc_id, rrf_score in sorted_rrf[:limit]:
-        if doc_id in doc_lookup:
-            item = doc_lookup[doc_id].copy()
-            item["rrf_score"] = rrf_score
-            final_results.append(item)
+    
+    if retriever_type == "dense":
+        # Dense only: keep top `limit` dense results directly
+        for doc_id in dense_results[:limit]:
+            if doc_id in doc_lookup:
+                item = doc_lookup[doc_id].copy()
+                item["rrf_score"] = 1.0
+                final_results.append(item)
+                
+    elif retriever_type == "sparse":
+        # Sparse only: keep top `limit` sparse results directly
+        for doc_id in sparse_results[:limit]:
+            if doc_id in doc_lookup:
+                item = doc_lookup[doc_id].copy()
+                item["rrf_score"] = 1.0
+                final_results.append(item)
+                
+    else:  # hybrid
+        # Reciprocal Rank Fusion (RRF)
+        rrf_scores = {}
+        rrf_constant = 60
+        
+        # Dense list scoring
+        for rank, doc_id in enumerate(dense_results, start=1):
+            rrf_scores[doc_id] = rrf_scores.get(doc_id, 0.0) + 1.0 / (rrf_constant + rank)
             
-    logger.info(f"Hybrid RRF retrieval returned {len(final_results)} items.")
+        # Sparse list scoring
+        for rank, doc_id in enumerate(sparse_results, start=1):
+            rrf_scores[doc_id] = rrf_scores.get(doc_id, 0.0) + 1.0 / (rrf_constant + rank)
+            
+        # Sort by RRF score descending
+        sorted_rrf = sorted(rrf_scores.items(), key=lambda item: item[1], reverse=True)
+        
+        # If RRF results are empty, fall back to top vector results
+        if not sorted_rrf:
+            logger.warning("RRF fusion returned empty. Falling back to dense vector results.")
+            sorted_rrf = [(doc_id, 1.0) for doc_id in dense_results]
+            
+        # Take top `limit` results
+        for doc_id, rrf_score in sorted_rrf[:limit]:
+            if doc_id in doc_lookup:
+                item = doc_lookup[doc_id].copy()
+                item["rrf_score"] = rrf_score
+                final_results.append(item)
+                
+    logger.info(f"{retriever_type.capitalize()} retrieval returned {len(final_results)} items.")
     return final_results
