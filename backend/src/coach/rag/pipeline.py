@@ -47,26 +47,100 @@ def ingest_corpus(corpus_dir: str, persist_dir: str) -> None:
 
 
 def retrieve_context(query: str, persist_dir: str, limit: int = 2) -> List[Dict]:
-    """Retrieves top semantically matching chunks from ChromaDB for a given query."""
-    logger.info(f"Querying vector store at {persist_dir} with: '{query}'")
+    """Retrieves top semantically + lexically matching chunks from ChromaDB and BM25 using RRF."""
+    logger.info(f"Querying vector store (hybrid) at {persist_dir} with: '{query}'")
     
     collection = get_collection(persist_dir)
-    query_results = collection.query(
-        query_texts=[query],
-        n_results=limit
-    )
     
-    results = []
-    if query_results and "documents" in query_results and query_results["documents"]:
-        documents = query_results["documents"][0]
-        metadatas = query_results["metadatas"][0] if "metadatas" in query_results and query_results["metadatas"] else []
-        ids = query_results["ids"][0] if "ids" in query_results and query_results["ids"] else []
+    # 1. Fetch all documents from ChromaDB to build the BM25 index dynamically
+    all_docs = collection.get()
+    
+    # If the collection is empty, fall back to empty list
+    if not all_docs or not all_docs.get("documents"):
+        logger.warning("No documents found in ChromaDB to build BM25 index.")
+        return []
         
-        for idx in range(len(documents)):
-            results.append({
-                "id": ids[idx],
-                "text": documents[idx],
-                "metadata": metadatas[idx] if idx < len(metadatas) else {}
-            })
+    doc_ids = all_docs["ids"]
+    documents = all_docs["documents"]
+    metadatas = all_docs["metadatas"] or [{} for _ in range(len(doc_ids))]
+    
+    # Pre-map for easy lookup by ID
+    doc_lookup = {
+        doc_ids[i]: {
+            "id": doc_ids[i],
+            "text": documents[i],
+            "metadata": metadatas[i] if metadatas[i] else {}
+        }
+        for i in range(len(doc_ids))
+    }
+    
+    # 2. Dense Vector Search (ChromaDB)
+    # We query ChromaDB for top 10 candidates (or len(doc_ids) if smaller)
+    vector_k = min(10, len(doc_ids))
+    dense_results = []
+    try:
+        query_results = collection.query(
+            query_texts=[query],
+            n_results=vector_k
+        )
+        if query_results and "documents" in query_results and query_results["documents"]:
+            q_docs = query_results["documents"][0]
+            q_ids = query_results["ids"][0] if "ids" in query_results else []
+            for i in range(len(q_docs)):
+                dense_results.append(q_ids[i])
+    except Exception as e:
+        logger.error(f"Error querying ChromaDB vector search: {e}")
+        
+    # 3. Sparse Lexical Search (BM25)
+    import re
+    from rank_bm25 import BM25Okapi
+    
+    def tokenize(text: str) -> List[str]:
+        return re.findall(r"[a-z0-9]+", text.lower())
+        
+    tokenized_corpus = [tokenize(doc) for doc in documents]
+    bm25 = BM25Okapi(tokenized_corpus)
+    
+    tokenized_query = tokenize(query)
+    bm25_scores = bm25.get_scores(tokenized_query)
+    
+    # Sort docs by BM25 score desc
+    bm25_k = min(10, len(doc_ids))
+    sorted_indices = sorted(range(len(bm25_scores)), key=lambda idx: bm25_scores[idx], reverse=True)
+    
+    sparse_results = []
+    for idx in sorted_indices[:bm25_k]:
+        # Only include if score > 0 to avoid matching empty terms
+        if bm25_scores[idx] > 0.0:
+            sparse_results.append(doc_ids[idx])
             
-    return results
+    # 4. Reciprocal Rank Fusion (RRF)
+    rrf_scores = {}
+    rrf_constant = 60
+    
+    # Dense list scoring
+    for rank, doc_id in enumerate(dense_results, start=1):
+        rrf_scores[doc_id] = rrf_scores.get(doc_id, 0.0) + 1.0 / (rrf_constant + rank)
+        
+    # Sparse list scoring
+    for rank, doc_id in enumerate(sparse_results, start=1):
+        rrf_scores[doc_id] = rrf_scores.get(doc_id, 0.0) + 1.0 / (rrf_constant + rank)
+        
+    # Sort by RRF score descending
+    sorted_rrf = sorted(rrf_scores.items(), key=lambda item: item[1], reverse=True)
+    
+    # If RRF results are empty, fall back to top vector results
+    if not sorted_rrf:
+        logger.warning("RRF fusion returned empty. Falling back to dense vector results.")
+        sorted_rrf = [(doc_id, 1.0) for doc_id in dense_results]
+        
+    # Take top `limit` results
+    final_results = []
+    for doc_id, rrf_score in sorted_rrf[:limit]:
+        if doc_id in doc_lookup:
+            item = doc_lookup[doc_id].copy()
+            item["rrf_score"] = rrf_score
+            final_results.append(item)
+            
+    logger.info(f"Hybrid RRF retrieval returned {len(final_results)} items.")
+    return final_results
