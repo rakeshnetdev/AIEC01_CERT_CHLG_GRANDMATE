@@ -1,4 +1,3 @@
-import React from "react";
 import { BookOpen, CheckCircle } from "lucide-react";
 import type { CoachReport, Severity } from "../lib/api";
 

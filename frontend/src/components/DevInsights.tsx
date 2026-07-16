@@ -1,4 +1,3 @@
-import React from "react";
 import { Terminal } from "lucide-react";
 import type { CoachReport } from "../lib/api";
 

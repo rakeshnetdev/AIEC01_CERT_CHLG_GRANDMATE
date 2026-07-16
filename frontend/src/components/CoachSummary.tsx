@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { Sparkles, TrendingDown, Target, ExternalLink, BookOpen } from "lucide-react";
 import type { CoachReport } from "../lib/api";
 
