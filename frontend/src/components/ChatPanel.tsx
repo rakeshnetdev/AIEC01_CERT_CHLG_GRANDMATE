@@ -12,7 +12,7 @@ interface ChatPanelProps {
 
 function highlightChessKeywords(text: string) {
   if (!text) return "";
-  const regex = /(\*\*.*?\*\*|\b(?:blunder[s]?|blundered|mistake[s]?|inaccuracy|inaccuracies|excellent|brilliant|best|victory|victories|win[s]?|won|stockfish|en passant)\b)/gi;
+  const regex = /(\*\*.*?\*\*|\b(?:blunder[s]?|blundered|mistake[s]?|inaccuracy|inaccuracies|excellent|brilliant|best|victory|victories|win[s]?|won|stockfish|en passant)\b|(?:\b\d+\.+\s*)?\b(?:[KQRBN][a-h1-8x]?[a-h][1-8]|[a-h]x[a-h][1-8]|[a-h][1-8]|\d+\.+[a-hKQRBNx+#\-=\/O]+|O-O(?:-O)?)[+#]?\b)/gi;
   const parts = text.split(regex);
   return parts.map((part, index) => {
     const lower = part.toLowerCase();
@@ -72,6 +72,17 @@ function highlightChessKeywords(text: string) {
         </span>
       );
     }
+    
+    // Check if it matches a chess move pattern
+    const isMove = /^(?:\d+\.+\s*)?(?:[KQRBN][a-h1-8x]?[a-h][1-8]|[a-h]x[a-h][1-8]|[a-h][1-8]|O-O(?:-O)?)[+#]?$/i.test(part.trim());
+    if (isMove) {
+      return (
+        <code key={index} className="px-1.5 py-0.5 rounded bg-slate-800/80 text-sky-300 font-mono text-[11px] border border-white/10 mx-0.5 align-baseline">
+          {part}
+        </code>
+      );
+    }
+    
     return part;
   });
 }
