@@ -123,7 +123,7 @@ export default function App() {
       <Header showDevInsights={showDevInsights} setShowDevInsights={setShowDevInsights} hasReport={!!report} />
 
       {/* Main Container */}
-      <main className="flex-1 w-full p-6 md:p-10 flex flex-col gap-10">
+      <main className={`flex-1 w-full p-6 md:p-10 flex flex-col gap-10 ${report ? "" : "max-w-7xl mx-auto"}`}>
         
         {/* Step 1: Input Area */}
         <AnalysisForm
