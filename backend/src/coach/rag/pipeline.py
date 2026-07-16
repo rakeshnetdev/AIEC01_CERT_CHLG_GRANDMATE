@@ -44,27 +44,30 @@ def ingest_corpus(corpus_dir: str, persist_dir: str) -> None:
         metadatas=metadatas
     )
     logger.info(f"Ingested {len(chunks)} chunks into ChromaDB.")
+    
+    # Invalidate cached BM25 index after fresh ingestion
+    global _BM25_CACHE
+    _BM25_CACHE = None
 
 
-def retrieve_context(query: str, persist_dir: str, limit: int = 2) -> List[Dict]:
-    """Retrieves top semantically + lexically matching chunks from ChromaDB and BM25 using RRF."""
-    logger.info(f"Querying vector store (hybrid) at {persist_dir} with: '{query}'")
-    
-    collection = get_collection(persist_dir)
-    
-    # 1. Fetch all documents from ChromaDB to build the BM25 index dynamically
+# Global cache for BM25 instance and lookups: (bm25_instance, doc_ids, doc_lookup)
+_BM25_CACHE = None
+
+def get_bm25_index(collection) -> tuple | None:
+    """Helper to lazily construct and cache the BM25 lexical index from ChromaDB."""
+    global _BM25_CACHE
+    if _BM25_CACHE is not None:
+        return _BM25_CACHE
+        
+    logger.info("Initializing and caching BM25 index from ChromaDB documents...")
     all_docs = collection.get()
-    
-    # If the collection is empty, fall back to empty list
     if not all_docs or not all_docs.get("documents"):
-        logger.warning("No documents found in ChromaDB to build BM25 index.")
-        return []
+        return None
         
     doc_ids = all_docs["ids"]
     documents = all_docs["documents"]
     metadatas = all_docs["metadatas"] or [{} for _ in range(len(doc_ids))]
     
-    # Pre-map for easy lookup by ID
     doc_lookup = {
         doc_ids[i]: {
             "id": doc_ids[i],
@@ -73,6 +76,33 @@ def retrieve_context(query: str, persist_dir: str, limit: int = 2) -> List[Dict]
         }
         for i in range(len(doc_ids))
     }
+    
+    import re
+    from rank_bm25 import BM25Okapi
+    
+    def tokenize(text: str) -> List[str]:
+        return re.findall(r"[a-z0-9]+", text.lower())
+        
+    tokenized_corpus = [tokenize(doc) for doc in documents]
+    bm25 = BM25Okapi(tokenized_corpus)
+    
+    _BM25_CACHE = (bm25, doc_ids, doc_lookup)
+    return _BM25_CACHE
+
+
+def retrieve_context(query: str, persist_dir: str, limit: int = 2) -> List[Dict]:
+    """Retrieves top semantically + lexically matching chunks from ChromaDB and BM25 using RRF."""
+    logger.info(f"Querying vector store (hybrid) at {persist_dir} with: '{query}'")
+    
+    collection = get_collection(persist_dir)
+    
+    # 1. Fetch or load the cached BM25 index to avoid pulling all documents on every query
+    bm25_data = get_bm25_index(collection)
+    if not bm25_data:
+        logger.warning("No documents found in ChromaDB to build BM25 index.")
+        return []
+        
+    bm25, doc_ids, doc_lookup = bm25_data
     
     # 2. Dense Vector Search (ChromaDB)
     # We query ChromaDB for top 10 candidates (or len(doc_ids) if smaller)
@@ -93,14 +123,9 @@ def retrieve_context(query: str, persist_dir: str, limit: int = 2) -> List[Dict]
         
     # 3. Sparse Lexical Search (BM25)
     import re
-    from rank_bm25 import BM25Okapi
-    
     def tokenize(text: str) -> List[str]:
         return re.findall(r"[a-z0-9]+", text.lower())
         
-    tokenized_corpus = [tokenize(doc) for doc in documents]
-    bm25 = BM25Okapi(tokenized_corpus)
-    
     tokenized_query = tokenize(query)
     bm25_scores = bm25.get_scores(tokenized_query)
     
