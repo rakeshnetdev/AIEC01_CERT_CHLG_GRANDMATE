@@ -1,0 +1,25 @@
+# Grandmate System Development Rules
+
+Follow these rules when maintaining, extending, or testing the **Grandmate** codebase:
+
+## 1. LLM Model Selection
+* **Rule:** Do not use experimental preview models (e.g., `gemini-2.0-flash`) in environments where pay-as-you-go billing is enabled. Google AI Studio blocks billing keys from accessing preview models, raising `404 Not Found` errors.
+* **Default Model:** Use `gemini/gemini-1.5-pro` (Gemini Pro) or `gemini/gemini-1.5-flash` in production configurations.
+
+## 2. Guardrails & Output Moderation
+* **Rule:** Do not include strategic chess-coaching terms (e.g., `"abuse"`, `"violence"`, `"attacks"`) in safety filters or `BANNED_WORDS` lists. 
+* **Reasoning:** Standard chess instruction naturally contains phrases like *"abusing the pin"* or *"violent mating attack"*. Including these terms triggers false-positive moderations (rendering `[Moderated Response]` summaries to the user).
+
+## 3. Stockfish Subprocess Management
+* **Rule:** If Stockfish engine connections fail, raise `TimeoutError`, or hang during test execution, run:
+  ```bash
+  pkill -f stockfish
+  ```
+* **Reasoning:** Rapid test execution or premature test exits can leave orphaned python/stockfish processes holding file locks on the Stockfish binary, preventing new connection handshakes.
+
+## 4. LangSmith API & Dotenv Configurations
+* **Rule:** Always call `load_dotenv(dotenv_path="backend/.env")` explicitly inside any standalone CLI python scripts (such as evaluations or report compilers) executed outside the FastAPI server context.
+
+## 5. Grounding Checks & Chess Coordinates
+* **Rule:** Whitelist standard Chess SAN coordinates (e.g. `Bc4`, `Qf3`, `d4`) in regex-based move grounding checkers. 
+* **Reasoning:** Simple regex matchers will mistake static coordinate symbols for actual played moves, raising the illegal move rate metric incorrectly.
