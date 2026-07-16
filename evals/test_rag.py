@@ -192,3 +192,77 @@ Respond in the following JSON format:
     avg_coaching = total_score / count if count > 0 else 5.0
     print(f"\nAverage LLM-Judge Coaching Quality: {avg_coaching:.2f}/5")
     assert avg_coaching >= 4.0
+
+def test_multiturn_chat_coaching():
+    dataset = load_dataset()
+    app = compile_coach_graph()
+    
+    total_score = 0
+    count = 0
+    
+    # We evaluate on 2 positions to keep runtime low and avoid rate limits
+    for item in dataset[:2]:
+        fen = item["fen_before"]
+        played = item["played_uci"]
+        
+        board = chess = __import__("chess")
+        b = board.Board(fen)
+        move = board.Move.from_uci(played)
+        san_played = b.san(move)
+        
+        # Turn 1: Analyze and narrate
+        game = Game(
+            game_id="eval_multiturn",
+            source="upload",
+            pgn=f"1. {san_played} *",
+            white="White",
+            black="Black",
+            result="*",
+            user_color="white" if b.turn == board.WHITE else "black"
+        )
+        
+        inputs = {"game": game, "messages": []}
+        config = {"configurable": {"thread_id": f"eval_multiturn_{item['played_uci']}"}}
+        
+        with collect_runs() as cb:
+            output_state = app.invoke(inputs, config)
+            
+        # Turn 2: Ask follow-up question
+        from langchain_core.messages import HumanMessage
+        inputs_2 = {
+            "messages": [HumanMessage(content="Why was my move a blunder and what was the best move instead?")]
+        }
+        
+        with collect_runs() as cb2:
+            output_state_2 = app.invoke(inputs_2, config)
+            run_id_2 = cb2.traced_runs[0].id if cb2.traced_runs else None
+            
+        followup_narration = output_state_2.get("output", "")
+        
+        judge_prompt = f"""
+Evaluate this conversational follow-up chess coaching reply.
+The user asked: "Why was my move a blunder and what was the best move instead?"
+
+Coach's Follow-up Reply:
+\"\"\"
+{followup_narration}
+\"\"\"
+
+Respond in the following JSON format:
+{{
+  "score": <integer from 1 to 5 indicating quality (clarity, accuracy of follow-up, encouraging tone)>
+}}
+"""
+        result = run_llm_judge(judge_prompt)
+        score = int(result.get("score", 0))
+        total_score += score
+        count += 1
+        
+        # Log feedback to the turn 2 run in LangSmith
+        if run_id_2:
+            log_to_langsmith(run_id_2, "chat_coaching_quality", score)
+            
+    avg_chat_coaching = total_score / count if count > 0 else 5.0
+    print(f"\nAverage Multi-turn Chat Coaching Quality: {avg_chat_coaching:.2f}/5")
+    assert avg_chat_coaching >= 4.0
+
