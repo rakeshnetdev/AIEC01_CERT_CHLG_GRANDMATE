@@ -64,7 +64,7 @@ export function AnalysisForm({
 
       <form onSubmit={onSubmit} className="flex flex-col gap-4">
         {activeTab === "fetch" ? (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="flex flex-col gap-2">
               <label className="text-xs font-semibold text-slate-400 tracking-wider">CHESS PLATFORM</label>
               <select
@@ -76,6 +76,40 @@ export function AnalysisForm({
                 <option value="chesscom">Chess.com</option>
               </select>
             </div>
+            
+            <div className="flex flex-col gap-2">
+              <label className="text-xs font-semibold text-slate-400 tracking-wider">ACTIVE PROFILES</label>
+              <select
+                value={username}
+                onChange={(e) => {
+                  if (e.target.value) {
+                    setUsername(e.target.value);
+                    setSource("lichess");
+                  }
+                }}
+                className="bg-slate-900/60 border border-white/10 rounded-lg p-3 text-sm focus:border-sky-400 focus:outline-none text-slate-200"
+              >
+                <option value="">-- Choose profile --</option>
+                {[
+                  { username: "Arkadiy_Khromaev", label: "Arkadiy_Khromaev (Yearly H)" },
+                  { username: "Kurald_Galain", label: "Kurald_Galain (Yearly Bullet)" },
+                  { username: "celvic", label: "celvic (Weekly Blitz)" },
+                  { username: "nguyenmanhduc_2x", label: "CM nguyenmanhduc_2x (Yearly Rapid)" },
+                  { username: "GlasnostPerestroika", label: "GlasnostPerestroika (2026 Spring)" },
+                  { username: "bzdybowicz", label: "bzdybowicz (Yearly)" },
+                  { username: "Master-06", label: "Master-06 (Yearly)" },
+                  { username: "alexa0112358", label: "alexa0112358 (Weekly)" },
+                  { username: "Surgut_Challenger", label: "Surgut_Challenger (Yearly Three-check)" },
+                  { username: "Tetiksh1Agrawal", label: "Tetiksh1Agrawal (Yearly)" },
+                  { username: "maxwellssilvrhaMMer", label: "maxwellssilvrhaMMer" }
+                ].map((player) => (
+                  <option key={player.username} value={player.username} className="bg-slate-950 text-slate-100">
+                    {player.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             <div className="flex flex-col gap-2 md:col-span-2">
               <label className="text-xs font-semibold text-slate-400 tracking-wider">USERNAME</label>
               <div className="relative">
@@ -100,42 +134,6 @@ export function AnalysisForm({
               onChange={(e) => setPgn(e.target.value)}
               className="bg-slate-900/60 border border-white/10 rounded-lg p-3 text-sm font-mono focus:border-sky-400 focus:outline-none resize-none"
             />
-          </div>
-        )}
-
-        {/* Quick Select Sample Players */}
-        {activeTab === "fetch" && (
-          <div className="flex flex-col gap-1.5 border-t border-white/5 pt-3">
-            <label className="text-[10px] font-bold text-slate-500 tracking-wider uppercase">Or Select Active Profile</label>
-            <select
-              value={username}
-              onChange={(e) => {
-                if (e.target.value) {
-                  setUsername(e.target.value);
-                  setSource("lichess");
-                }
-              }}
-              className="w-full md:max-w-xs bg-slate-900/60 border border-white/10 rounded-lg p-2 text-xs focus:border-sky-400 focus:outline-none text-slate-300"
-            >
-              <option value="">-- Choose active profile --</option>
-              {[
-                { username: "Arkadiy_Khromaev", label: "Arkadiy_Khromaev (Yearly H)" },
-                { username: "Kurald_Galain", label: "Kurald_Galain (Yearly Bullet)" },
-                { username: "celvic", label: "celvic (Weekly Blitz)" },
-                { username: "nguyenmanhduc_2x", label: "CM nguyenmanhduc_2x (Yearly Rapid)" },
-                { username: "GlasnostPerestroika", label: "GlasnostPerestroika (2026 Spring)" },
-                { username: "bzdybowicz", label: "bzdybowicz (Yearly)" },
-                { username: "Master-06", label: "Master-06 (Yearly)" },
-                { username: "alexa0112358", label: "alexa0112358 (Weekly)" },
-                { username: "Surgut_Challenger", label: "Surgut_Challenger (Yearly Three-check)" },
-                { username: "Tetiksh1Agrawal", label: "Tetiksh1Agrawal (Yearly)" },
-                { username: "maxwellssilvrhaMMer", label: "maxwellssilvrhaMMer" }
-              ].map((player) => (
-                <option key={player.username} value={player.username} className="bg-slate-950 text-slate-100">
-                  {player.label}
-                </option>
-              ))}
-            </select>
           </div>
         )}
 
