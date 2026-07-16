@@ -37,11 +37,31 @@ export default function App() {
   const [chatInput, setChatInput] = useState("");
   const [messages, setMessages] = useState<Array<{ sender: "user" | "ai"; text: string }>>([]);
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const loaderRef = useRef<HTMLDivElement>(null);
+  const resultsRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll chat to bottom
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  // Scroll to loader when analysis starts
+  useEffect(() => {
+    if (isAnalyzing) {
+      setTimeout(() => {
+        loaderRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 100);
+    }
+  }, [isAnalyzing]);
+
+  // Scroll to results when report loads
+  useEffect(() => {
+    if (report) {
+      setTimeout(() => {
+        resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 100);
+    }
+  }, [report]);
 
   // Load Pragg games on mount and handle 2-second splash screen timeout
   useEffect(() => {
@@ -182,8 +202,16 @@ export default function App() {
         />
 
         {/* Step 2: Dashboard Content */}
+        {isAnalyzing && (
+          <div ref={loaderRef} className="glass-panel rounded-2xl p-8 flex flex-col items-center justify-center gap-4 text-center shadow-xl border border-white/5 animate-pulse">
+            <RefreshCw className="w-8 h-8 animate-spin text-sky-400" />
+            <h3 className="text-lg font-bold text-white">Running Grandmate Chess Analysis...</h3>
+            <p className="text-xs text-slate-400 max-w-sm">Stockfish is reviewing moves and the RAG helper is fetching opening theory. This will take ~2 seconds.</p>
+          </div>
+        )}
+
         {report && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+          <div ref={resultsRef} className="grid grid-cols-1 lg:grid-cols-3 gap-10">
             {/* Left/Middle Column (Report Overview, Weaknesses, Findings) */}
             <div className="lg:col-span-2 flex flex-col gap-10">
               
