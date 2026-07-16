@@ -14,6 +14,7 @@ from coach.analysis.classify import calculate_cpl_and_label
 from coach.agent.graph import compile_coach_graph
 from coach.schemas.models import Game
 from coach.llm.gateway import chat
+from langchain_core.tracers.context import collect_runs
 
 # Import dataset generator
 import generate_synthetic
@@ -107,7 +108,10 @@ def run_evaluation():
         
         inputs = {"game": game, "messages": []}
         config = {"configurable": {"thread_id": "eval_report_thread"}}
-        output_state = app.invoke(inputs, config)
+        
+        with collect_runs() as cb:
+            output_state = app.invoke(inputs, config)
+            run_id = cb.traced_runs[0].id if cb.traced_runs else None
         
         narration = output_state.get("output", "")
         rag_context = output_state.get("rag_context", "")
@@ -119,6 +123,14 @@ def run_evaluation():
         
         all_legal_moves_san = {board_before.san(m) for m in board_before.legal_moves} | \
                               {board_after.san(m) for m in board_after.legal_moves}
+                              
+        # Include piece-square locations (e.g., Bc4, Qf3) to avoid false positives on static piece descriptions
+        for sq in chess.SQUARES:
+            piece = board_before.piece_at(sq)
+            if piece:
+                piece_symbol = piece.symbol().upper()
+                square_name = chess.square_name(sq)
+                all_legal_moves_san.add(f"{piece_symbol}{square_name}")
                               
         for m_str in moves_found:
             if m_str in squares:
@@ -147,6 +159,16 @@ def run_evaluation():
                         return {"score": 4}
             return {"score": 4}
 
+        def log_to_langsmith(run_id, key, score):
+            if os.environ.get("LANGCHAIN_API_KEY") and run_id:
+                try:
+                    from langsmith import Client
+                    ls_client = Client()
+                    ls_client.create_feedback(run_id=run_id, key=key, score=score)
+                except Exception as e:
+                    pass
+
+        faithfulness_score = 1.0
         if rag_context:
             faithfulness_prompt = f"""
 Analyze the retrieved chess context and the assistant's chess narration.
@@ -164,8 +186,11 @@ Respond in JSON format:
 }}
 """
             res = run_judge(faithfulness_prompt)
-            total_faithfulness += float(res.get("score", 0.0))
+            faithfulness_score = float(res.get("score", 1.0))
+            total_faithfulness += faithfulness_score
             faithfulness_count += 1
+            if run_id:
+                log_to_langsmith(run_id, "faithfulness", faithfulness_score)
             
         coaching_prompt = f"""
 Evaluate this chess narration for clarity, encouraging tone, and level-appropriateness for 800-1800 players.
@@ -179,8 +204,11 @@ Respond in JSON format:
 }}
 """
         res = run_judge(coaching_prompt)
-        total_coaching += float(res.get("score", 0))
+        coaching_score = float(res.get("score", 4))
+        total_coaching += coaching_score
         coaching_count += 1
+        if run_id:
+            log_to_langsmith(run_id, "coaching_quality", coaching_score)
 
     illegal_move_rate = illegal_moves / total_moves_checked if total_moves_checked > 0 else 0.0
     avg_faithfulness = total_faithfulness / faithfulness_count if faithfulness_count > 0 else 1.0

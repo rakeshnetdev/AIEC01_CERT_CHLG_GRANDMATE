@@ -1,4 +1,5 @@
 import json
+import os
 import sys
 import pytest
 from pathlib import Path
@@ -12,6 +13,7 @@ from config.settings import get_settings
 from coach.agent.graph import compile_coach_graph
 from coach.schemas.models import Game
 from coach.llm.gateway import chat
+from langchain_core.tracers.context import collect_runs
 
 def load_dataset():
     dataset_file = ROOT / "evals" / "synthetic_dataset.json"
@@ -42,6 +44,21 @@ def run_llm_judge(prompt: str) -> dict:
                 return {"score": 4}
     return {"score": 4}
 
+def log_to_langsmith(run_id, key, score):
+    """Helper to log evaluation score feedback directly to LangSmith."""
+    if os.environ.get("LANGCHAIN_API_KEY") and run_id:
+        try:
+            from langsmith import Client
+            ls_client = Client()
+            ls_client.create_feedback(
+                run_id=run_id,
+                key=key,
+                score=score
+            )
+            print(f"Logged feedback '{key}': {score} to LangSmith for run {run_id}")
+        except Exception as e:
+            print(f"Failed to log feedback to LangSmith: {e}")
+
 def test_ragas_faithfulness():
     dataset = load_dataset()
     app = compile_coach_graph()
@@ -70,7 +87,11 @@ def test_ragas_faithfulness():
         
         inputs = {"game": game, "messages": []}
         config = {"configurable": {"thread_id": "eval_rag_thread"}}
-        output_state = app.invoke(inputs, config)
+        
+        # Track trace run ID in LangSmith
+        with collect_runs() as cb:
+            output_state = app.invoke(inputs, config)
+            run_id = cb.traced_runs[0].id if cb.traced_runs else None
         
         narration = output_state.get("output", "")
         rag_context = output_state.get("rag_context", "")
@@ -101,6 +122,10 @@ Respond in the following JSON format:
         score = float(result.get("score", 0.0))
         total_score += score
         count += 1
+        
+        # Log to LangSmith
+        if run_id:
+            log_to_langsmith(run_id, "faithfulness", score)
         
     avg_faithfulness = total_score / count if count > 0 else 1.0
     print(f"\nAverage RAGAS Faithfulness: {avg_faithfulness:.4f}")
@@ -134,7 +159,11 @@ def test_llm_judge_coaching():
         
         inputs = {"game": game, "messages": []}
         config = {"configurable": {"thread_id": "eval_coach_thread"}}
-        output_state = app.invoke(inputs, config)
+        
+        # Track trace run ID in LangSmith
+        with collect_runs() as cb:
+            output_state = app.invoke(inputs, config)
+            run_id = cb.traced_runs[0].id if cb.traced_runs else None
         
         narration = output_state.get("output", "")
         
@@ -155,6 +184,10 @@ Respond in the following JSON format:
         score = int(result.get("score", 0))
         total_score += score
         count += 1
+        
+        # Log to LangSmith
+        if run_id:
+            log_to_langsmith(run_id, "coaching_quality", score)
         
     avg_coaching = total_score / count if count > 0 else 5.0
     print(f"\nAverage LLM-Judge Coaching Quality: {avg_coaching:.2f}/5")
