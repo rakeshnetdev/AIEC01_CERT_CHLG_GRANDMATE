@@ -124,7 +124,7 @@ Below is the compiled state graph representation as exported from LangGraph Stud
 
 ![LangGraph State Graph](stategraph.png)
 
-#### Detailed State & Node Transitions
+#### 2.5.1 Detailed State & Node Transitions
 1. **`fetch_and_analyse` (Entry Node):**
    * *What it does:* Receives the user's uploaded PGN or crawls their game history from external chess platforms (Lichess/Chess.com). It runs the Stockfish engine to analyze each move, calculating centipawn loss and labeling mistakes (blunders, mistakes, inaccuracies).
    * *Output:* Populates `analyses` and `game` fields in the state.
