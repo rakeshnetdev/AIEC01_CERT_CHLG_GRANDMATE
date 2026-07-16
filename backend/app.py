@@ -264,8 +264,17 @@ def chat_message(request: ChatRequest):
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
         
-    # 2. Invoke LangGraph with message and session_id config
+    # Check if a game has already been analyzed in this session (avoid empty thread crashes)
     config = {"configurable": {"thread_id": request.session_id}}
+    current_state = coach_graph.get_state(config)
+    if not current_state or not current_state.values or not current_state.values.get("game"):
+        logger.warning(f"Chat request failed: No game loaded in session {request.session_id}")
+        return {
+            "reply": "Please load and analyze a chess game first before asking coaching questions!",
+            "developer_insight": None
+        }
+        
+    # 2. Invoke LangGraph with message and session_id config
     inputs = {
         "messages": [HumanMessage(content=request.message)]
     }
