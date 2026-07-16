@@ -63,9 +63,18 @@ def test_illegal_move_rate():
         board_after = board_before.copy()
         board_after.push(move)
         
+        # Create a set of all legal moves in the position before and after
         all_legal_moves_san = {board_before.san(m) for m in board_before.legal_moves} | \
                               {board_after.san(m) for m in board_after.legal_moves}
                               
+        # Include piece-square locations (e.g., Bc4, Qf3) to avoid false positives on static piece descriptions
+        for sq in chess.SQUARES:
+            piece = board_before.piece_at(sq)
+            if piece:
+                piece_symbol = piece.symbol().upper()
+                square_name = chess.square_name(sq)
+                all_legal_moves_san.add(f"{piece_symbol}{square_name}")
+        
         squares = {chess.square_name(sq) for sq in chess.SQUARES}
         
         for m_str in moves_found:

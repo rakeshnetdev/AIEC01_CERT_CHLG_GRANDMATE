@@ -22,11 +22,23 @@ def chat(messages: List[Dict[str, str]], model: str | None = None, **kw) -> str:
     # Disable LiteLLM telephony/telemetry logging to clean up logs
     os.environ["LITELLM_LOGGING"] = "FALSE"
 
-    response = litellm.completion(
-        model=primary_model,
-        messages=messages,
-        fallbacks=fallbacks,
-        **kw
-    )
+    import time
+    import litellm.exceptions
 
-    return response.choices[0].message.content
+    for attempt in range(4):
+        try:
+            response = litellm.completion(
+                model=primary_model,
+                messages=messages,
+                fallbacks=fallbacks,
+                **kw
+            )
+            return response.choices[0].message.content
+        except litellm.exceptions.RateLimitError as e:
+            if attempt < 3:
+                sleep_time = (attempt + 1) * 10.0
+                print(f"RateLimitError encountered. Retrying in {sleep_time:.1f}s... (Attempt {attempt+1}/4)")
+                time.sleep(sleep_time)
+            else:
+                raise e
+
