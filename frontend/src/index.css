@@ -106,31 +106,21 @@
   color: #64748b !important;
 }
 
-.light-theme border-white/5, 
-.light-theme .border-white/5 {
+.light-theme [class*="border-white/5"] {
   border-color: rgba(0, 0, 0, 0.08) !important;
 }
 
-.light-theme border-white/10, 
-.light-theme .border-white/10 {
+.light-theme [class*="border-white/10"] {
   border-color: rgba(0, 0, 0, 0.1) !important;
 }
 
-.light-theme bg-slate-900,
-.light-theme .bg-slate-900,
-.light-theme bg-slate-900/60,
-.light-theme .bg-slate-900/60,
-.light-theme bg-slate-950,
-.light-theme .bg-slate-950,
-.light-theme bg-slate-950/20,
-.light-theme .bg-slate-950/20,
-.light-theme bg-slate-950/40,
-.light-theme .bg-slate-950/40 {
+.light-theme [class*="bg-slate-900"],
+.light-theme [class*="bg-slate-950"] {
   background-color: #f1f5f9 !important;
   color: #1e293b !important;
 }
 
-.light-theme .bg-slate-900\/40 {
+.light-theme [class*="bg-slate-900/40"] {
   background-color: #f1f5f9 !important;
 }
 
@@ -145,20 +135,20 @@
 }
 
 /* Chat bubble overrides for light mode */
-.light-theme .self-start.bg-slate-900 {
+.light-theme .self-start[class*="bg-slate-900"] {
   background-color: #f1f5f9 !important;
   border-color: rgba(0, 0, 0, 0.06) !important;
   color: #1e293b !important;
 }
 
 /* Active select buttons overrides */
-.light-theme .bg-slate-900\/60.border-white\/10 {
+.light-theme [class*="bg-slate-900/60"][class*="border-white/10"] {
   background-color: #ffffff !important;
   border-color: rgba(0, 0, 0, 0.08) !important;
   color: #64748b !important;
 }
 
-.light-theme .bg-sky-500\/10.border-sky-400 {
+.light-theme [class*="bg-sky-500/10"][class*="border-sky-400"] {
   background-color: rgba(56, 189, 248, 0.12) !important;
   border-color: #38bdf8 !important;
   color: #0369a1 !important;
