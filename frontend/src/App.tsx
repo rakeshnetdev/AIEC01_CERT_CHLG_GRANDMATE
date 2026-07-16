@@ -19,7 +19,7 @@ export default function App() {
   const [pgn, setPgn] = useState("");
   const [activeTab, setActiveTab] = useState<"fetch" | "paste">("fetch");
   const [showDevInsights, setShowDevInsights] = useState(false);
-  const [activeDevTab, setActiveDevTab] = useState<"engine" | "rag" | "prompt">("engine");
+  const [activeDevTab, setActiveDevTab] = useState<"engine" | "rag" | "prompt" | "grounding">("engine");
   const [retrieverType, setRetrieverType] = useState<"hybrid" | "dense" | "sparse">("hybrid");
   const [carlsenGames, setCarlsenGames] = useState<CarlsenGame[]>([]);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
