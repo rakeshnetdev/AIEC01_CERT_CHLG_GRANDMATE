@@ -137,6 +137,45 @@ export function ChatPanel({
         <div ref={chatEndRef} />
       </div>
 
+      {/* Quick Questions Dropdown */}
+      {messages.length > 0 && (
+        <div className="px-4 py-2 border-t border-white/5 bg-slate-950/40 flex items-center gap-2">
+          <span className="text-[10px] text-slate-500 font-semibold whitespace-nowrap">Suggested:</span>
+          <select
+            onChange={(e) => {
+              if (e.target.value) {
+                setChatInput(e.target.value);
+                e.target.value = ""; // Reset dropdown
+              }
+            }}
+            disabled={isSendingChat}
+            className="flex-1 bg-slate-900/60 border border-white/10 rounded px-2 py-1 text-[11px] text-slate-300 focus:outline-none focus:border-sky-500/50 disabled:opacity-50"
+          >
+            <option value="">-- Choose a question to pre-fill --</option>
+            <optgroup label="Weaknesses & Drills">
+              <option value="What is my biggest recurring weakness in this game?">What is my biggest recurring weakness in this game?</option>
+              <option value="Recommend a training drill based on my mistakes.">Recommend a training drill based on my mistakes.</option>
+            </optgroup>
+            <optgroup label="Move Calculations">
+              <option value="Why was my worst move a mistake/blunder?">Why was my worst move a mistake/blunder?</option>
+              <option value="Explain the calculation logic behind the engine's best move recommendation.">Explain the calculation logic behind the engine's best move recommendation.</option>
+            </optgroup>
+            <optgroup label="Openings & Strategy">
+              <option value="Can you explain the main strategic plan for my opening?">Can you explain the main strategic plan for my opening?</option>
+              <option value="What positional target squares should I have focused on?">What positional target squares should I have focused on?</option>
+            </optgroup>
+            <optgroup label="Defensive & Middlegame Play">
+              <option value="How could I have better defended my position in the middlegame?">How could I have better defended my position in the middlegame?</option>
+              <option value="Were there any passive pieces or weak squares in my structure?">Were there any passive pieces or weak squares in my structure?</option>
+            </optgroup>
+            <optgroup label="Pattern Evaluation">
+              <option value="Did I lose because of tactical oversights, opening prep, or bad endgames?">Did I lose because of tactical oversights, opening prep, or bad endgames?</option>
+              <option value="What specific concepts should I study next to improve?">What specific concepts should I study next to improve?</option>
+            </optgroup>
+          </select>
+        </div>
+      )}
+
       {/* Chat Input Area */}
       <form onSubmit={onSubmit} className="p-4 border-t border-white/5 bg-slate-950/40 flex gap-2">
         <input

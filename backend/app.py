@@ -303,6 +303,15 @@ def review_game(request: ReviewRequest):
         retriever_type=request.retriever_type or "hybrid"
     )
     
+    # Calculate game status based on result and user_color
+    game_status = "draw"
+    if game.result == "1-0":
+        game_status = "won" if game.user_color == "white" else "lost"
+    elif game.result == "0-1":
+        game_status = "won" if game.user_color == "black" else "lost"
+    elif game.result not in ["1/2-1/2", "1/2"]:
+        game_status = "unknown"
+
     return CoachReport(
         username=request.username or game.white,
         games_reviewed=1,
@@ -313,7 +322,9 @@ def review_game(request: ReviewRequest):
         position_explanation=position_explanation,
         latency_s=round(time.time() - start_time, 2),
         cost_usd=0.002,  # Estimated trace cost
-        developer_insight=dev_insight
+        developer_insight=dev_insight,
+        game_status=game_status,
+        game_result=game.result
     )
 
 

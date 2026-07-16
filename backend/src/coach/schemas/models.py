@@ -81,3 +81,5 @@ class CoachReport(BaseModel):
     latency_s: float = 0.0
     cost_usd: float = 0.0
     developer_insight: Optional[DeveloperInsight] = None
+    game_status: Optional[str] = None
+    game_result: Optional[str] = None

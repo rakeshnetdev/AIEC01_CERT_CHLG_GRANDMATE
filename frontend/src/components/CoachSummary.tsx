@@ -86,6 +86,62 @@ function highlightChessKeywords(text: string) {
 export function CoachSummary({ report }: CoachSummaryProps) {
   const [activeTab, setActiveTab] = useState<"summary" | "explanations">("summary");
 
+  const blunderCount = report.findings?.filter(f => f.label === "blunder").length || 0;
+  const mistakeCount = report.findings?.filter(f => f.label === "mistake").length || 0;
+  const inaccuracyCount = report.findings?.filter(f => f.label === "inaccuracy").length || 0;
+
+  const renderOutcomeBadge = () => {
+    if (!report.game_status) return null;
+    const status = report.game_status.toLowerCase();
+    if (status === "won") {
+      return (
+        <span className="px-2.5 py-0.5 text-xs font-bold rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+          Won
+        </span>
+      );
+    }
+    if (status === "lost") {
+      return (
+        <span className="px-2.5 py-0.5 text-xs font-bold rounded-full bg-rose-500/10 text-rose-400 border border-rose-500/20">
+          Lost
+        </span>
+      );
+    }
+    if (status === "draw") {
+      return (
+        <span className="px-2.5 py-0.5 text-xs font-bold rounded-full bg-slate-500/10 text-slate-400 border border-slate-500/20">
+          Draw
+        </span>
+      );
+    }
+    return null;
+  };
+
+  const renderMistakeStatsBadge = () => {
+    const parts = [];
+    if (blunderCount > 0) {
+      parts.push(`${blunderCount} Blunder${blunderCount > 1 ? "s" : ""}`);
+    }
+    if (mistakeCount > 0) {
+      parts.push(`${mistakeCount} Mistake${mistakeCount > 1 ? "s" : ""}`);
+    }
+    if (inaccuracyCount > 0) {
+      parts.push(`${inaccuracyCount} Inaccurac${inaccuracyCount > 1 ? "ies" : "y"}`);
+    }
+    if (parts.length === 0) {
+      return (
+        <span className="px-2.5 py-0.5 text-xs font-semibold rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+          Clean Game!
+        </span>
+      );
+    }
+    return (
+      <span className="px-2.5 py-0.5 text-xs font-semibold rounded-full bg-slate-800 text-slate-300 border border-white/10">
+        {parts.join(" · ")}
+      </span>
+    );
+  };
+
   return (
     <div className="flex flex-col gap-10">
       {/* Unified Analysis Workspace Card */}
@@ -95,8 +151,12 @@ export function CoachSummary({ report }: CoachSummaryProps) {
         {/* Meta Row */}
         <div className="flex flex-wrap justify-between items-center gap-4 border-b border-white/5 pb-4">
           <div>
-            <h3 className="text-xl font-bold tracking-tight text-white">{report.username}'s Game Analysis</h3>
-            <p className="text-xs text-slate-400 mt-0.5">Report generated with Stockfish depth 16 & local semantic RAG</p>
+            <div className="flex flex-wrap items-center gap-2">
+              <h3 className="text-xl font-bold tracking-tight text-white">{report.username}'s Game Analysis</h3>
+              {renderOutcomeBadge()}
+              {renderMistakeStatsBadge()}
+            </div>
+            <p className="text-xs text-slate-400 mt-1">Report generated with Stockfish depth 16 & local semantic RAG</p>
           </div>
           <div className="flex flex-wrap items-center gap-3 text-sm">
             <span className="px-3 py-1 bg-slate-900 border border-white/5 rounded-md text-slate-400">
