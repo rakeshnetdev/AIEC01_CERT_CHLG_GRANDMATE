@@ -120,10 +120,10 @@ export default function App() {
   return (
     <div className="min-h-screen bg-[#060814] text-slate-100 flex flex-col">
       {/* Top Navigation Header */}
-      <Header />
+      <Header showDevInsights={showDevInsights} setShowDevInsights={setShowDevInsights} hasReport={!!report} />
 
       {/* Main Container */}
-      <main className="flex-1 max-w-7xl w-full mx-auto p-6 md:p-10 flex flex-col gap-10">
+      <main className="flex-1 w-full p-6 md:p-10 flex flex-col gap-10">
         
         {/* Step 1: Input Area */}
         <AnalysisForm
@@ -150,11 +150,7 @@ export default function App() {
             <div className="lg:col-span-2 flex flex-col gap-10">
               
               {/* Metrics & Summary Card */}
-              <CoachSummary
-                report={report}
-                showDevInsights={showDevInsights}
-                setShowDevInsights={setShowDevInsights}
-              />
+              <CoachSummary report={report} />
 
               {/* Move Breakdown Table */}
               <MoveBreakdown report={report} />

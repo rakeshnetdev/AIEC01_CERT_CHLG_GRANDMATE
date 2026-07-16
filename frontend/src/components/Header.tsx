@@ -1,7 +1,13 @@
 import React from "react";
-import { Crown } from "lucide-react";
+import { Crown, Terminal } from "lucide-react";
 
-export function Header() {
+interface HeaderProps {
+  showDevInsights: boolean;
+  setShowDevInsights: (s: boolean) => void;
+  hasReport: boolean;
+}
+
+export function Header({ showDevInsights, setShowDevInsights, hasReport }: HeaderProps) {
   return (
     <header className="glass-panel sticky top-0 z-50 border-b border-white/5 py-4 px-6 md:px-12 flex justify-between items-center">
       <div className="flex items-center gap-3">
@@ -15,9 +21,24 @@ export function Header() {
           <p className="text-xs text-slate-500 font-medium tracking-wide">AI CHESS COACHING SYSTEM</p>
         </div>
       </div>
-      <div className="flex items-center gap-3 text-xs bg-slate-900/60 border border-white/5 px-3 py-1.5 rounded-lg text-slate-400">
-        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-        FastAPI Connected
+      <div className="flex items-center gap-4">
+        {hasReport && (
+          <button
+            onClick={() => setShowDevInsights(!showDevInsights)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all border ${
+              showDevInsights 
+                ? "bg-indigo-500/20 border-indigo-500/40 text-indigo-300 shadow-lg shadow-indigo-500/10"
+                : "bg-slate-900 border-white/5 text-slate-400 hover:text-slate-200 hover:bg-slate-800"
+            }`}
+          >
+            <Terminal className="w-3.5 h-3.5" />
+            {showDevInsights ? "Hide Dev Insights" : "Dev Insights"}
+          </button>
+        )}
+        <div className="flex items-center gap-3 text-xs bg-slate-900/60 border border-white/5 px-3 py-1.5 rounded-lg text-slate-400">
+          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+          FastAPI Connected
+        </div>
       </div>
     </header>
   );

@@ -1,14 +1,12 @@
 import React from "react";
-import { Sparkles, TrendingDown, Target, ExternalLink, Terminal } from "lucide-react";
+import { Sparkles, TrendingDown, Target, ExternalLink } from "lucide-react";
 import type { CoachReport } from "../lib/api";
 
 interface CoachSummaryProps {
   report: CoachReport;
-  showDevInsights: boolean;
-  setShowDevInsights: (s: boolean) => void;
 }
 
-export function CoachSummary({ report, showDevInsights, setShowDevInsights }: CoachSummaryProps) {
+export function CoachSummary({ report }: CoachSummaryProps) {
   return (
     <div className="flex flex-col gap-10">
       {/* Metrics & Summary Card */}
@@ -28,17 +26,6 @@ export function CoachSummary({ report, showDevInsights, setShowDevInsights }: Co
             <span className="px-3 py-1 bg-slate-900 border border-white/5 rounded-md text-slate-400">
               Cost: <strong className="text-emerald-400 font-bold">${report.cost_usd.toFixed(4)}</strong>
             </span>
-            <button
-              onClick={() => setShowDevInsights(!showDevInsights)}
-              className={`px-3 py-1 rounded-md text-xs font-semibold flex items-center gap-1.5 transition-all border ${
-                showDevInsights 
-                  ? "bg-indigo-500/20 border-indigo-500/40 text-indigo-300 shadow-lg shadow-indigo-500/10"
-                  : "bg-slate-900 border-white/5 text-slate-400 hover:text-slate-200 hover:bg-slate-800"
-              }`}
-            >
-              <Terminal className="w-3.5 h-3.5" />
-              {showDevInsights ? "Hide Dev Insights" : "Dev Insights"}
-            </button>
           </div>
         </div>
 
