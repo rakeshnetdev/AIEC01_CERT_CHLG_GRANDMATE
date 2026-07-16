@@ -10,6 +10,72 @@ interface ChatPanelProps {
   chatEndRef: React.RefObject<HTMLDivElement | null>;
 }
 
+function highlightChessKeywords(text: string) {
+  if (!text) return "";
+  const regex = /(\*\*.*?\*\*|\b(?:blunder[s]?|blundered|mistake[s]?|inaccuracy|inaccuracies|excellent|brilliant|best|victory|victories|win[s]?|won|stockfish|en passant)\b)/gi;
+  const parts = text.split(regex);
+  return parts.map((part, index) => {
+    const lower = part.toLowerCase();
+    if (part.startsWith("**") && part.endsWith("**")) {
+      return (
+        <strong key={index} className="font-bold text-white">
+          {part.slice(2, -2)}
+        </strong>
+      );
+    }
+    if (lower.startsWith("blunder")) {
+      return (
+        <span key={index} className="px-1.5 py-0.5 rounded bg-rose-500/10 text-rose-400 border border-rose-500/20 font-semibold inline-block text-xs mx-0.5 align-baseline">
+          {part}
+        </span>
+      );
+    }
+    if (lower.startsWith("mistake")) {
+      return (
+        <span key={index} className="px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 font-semibold inline-block text-xs mx-0.5 align-baseline">
+          {part}
+        </span>
+      );
+    }
+    if (lower.startsWith("inaccurac")) {
+      return (
+        <span key={index} className="px-1.5 py-0.5 rounded bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 font-semibold inline-block text-xs mx-0.5 align-baseline">
+          {part}
+        </span>
+      );
+    }
+    if (lower === "excellent" || lower === "brilliant" || lower === "best") {
+      return (
+        <span key={index} className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-semibold inline-block text-xs mx-0.5 align-baseline">
+          {part}
+        </span>
+      );
+    }
+    if (lower === "stockfish") {
+      return (
+        <span key={index} className="px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 font-semibold inline-block text-xs mx-0.5 align-baseline">
+          {part}
+        </span>
+      );
+    }
+    if (lower === "victory" || lower === "victories" || lower === "win" || lower === "wins" || lower === "won") {
+      return (
+        <span key={index} className="px-1.5 py-0.5 rounded bg-sky-500/10 text-sky-400 border border-sky-500/20 font-semibold inline-block text-xs mx-0.5 align-baseline">
+          {part}
+        </span>
+      );
+    }
+    if (lower === "en passant") {
+      return (
+        <span key={index} className="px-1.5 py-0.5 rounded bg-orange-500/10 text-orange-400 border border-orange-500/20 font-semibold inline-block text-xs mx-0.5 align-baseline">
+          {part}
+        </span>
+      );
+    }
+    return part;
+  });
+}
+
 export function ChatPanel({
   messages,
   chatInput,
@@ -48,7 +114,7 @@ export function ChatPanel({
                 : "self-start bg-slate-900 border border-white/5 text-slate-300 rounded-bl-none"
             }`}
           >
-            <span>{m.text}</span>
+            <span>{m.sender === "user" ? m.text : highlightChessKeywords(m.text)}</span>
           </div>
         ))}
         {isSendingChat && (
