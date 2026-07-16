@@ -44,8 +44,11 @@ export function AnalysisForm({
           <Sparkles className="w-4 h-4" />
         </div>
         <div className="flex-1">
-          <div className="flex items-center gap-3 flex-wrap">
-            <h2 className="text-base font-bold tracking-tight text-white">Start Your Analysis</h2>
+          <h2 className="text-base font-bold tracking-tight text-white">Start Your Analysis</h2>
+          <div className="flex items-center gap-3 flex-wrap mt-0.5">
+            <p className="text-[11px] text-slate-400">
+              Submit matches to get Stockfish evaluations and RAG-driven opening insights.
+            </p>
             <button
               type="submit"
               form="analysis-form"
@@ -69,7 +72,6 @@ export function AnalysisForm({
               )}
             </button>
           </div>
-          <p className="text-[11px] text-slate-400 mt-0.5">Submit matches to get Stockfish evaluations and RAG-driven opening insights.</p>
         </div>
       </div>
 
