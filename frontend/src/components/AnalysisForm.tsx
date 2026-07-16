@@ -106,38 +106,36 @@ export function AnalysisForm({
         {/* Quick Select Sample Players */}
         {activeTab === "fetch" && (
           <div className="flex flex-col gap-2 border-t border-white/5 pt-4">
-            <label className="text-[10px] font-bold text-slate-500 tracking-wider uppercase">Quick Select Active Profiles</label>
-            <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto pr-2">
+            <label className="text-xs font-semibold text-slate-400 tracking-wider">OR SELECT AN ACTIVE TESTING PROFILE</label>
+            <select
+              value={username}
+              onChange={(e) => {
+                if (e.target.value) {
+                  setUsername(e.target.value);
+                  setSource("lichess");
+                }
+              }}
+              className="bg-slate-900/60 border border-white/10 rounded-lg p-3 text-sm focus:border-sky-400 focus:outline-none text-slate-200"
+            >
+              <option value="">-- Choose active player profile --</option>
               {[
                 { username: "Arkadiy_Khromaev", label: "Arkadiy_Khromaev (Yearly H)" },
                 { username: "Kurald_Galain", label: "Kurald_Galain (Yearly Bullet)" },
                 { username: "celvic", label: "celvic (Weekly Blitz)" },
                 { username: "nguyenmanhduc_2x", label: "CM nguyenmanhduc_2x (Yearly Rapid)" },
-                { username: "GlasnostPerestroika", label: "GlasnostPerestroika (Spring)" },
+                { username: "GlasnostPerestroika", label: "GlasnostPerestroika (2026 Spring)" },
                 { username: "bzdybowicz", label: "bzdybowicz (Yearly)" },
                 { username: "Master-06", label: "Master-06 (Yearly)" },
                 { username: "alexa0112358", label: "alexa0112358 (Weekly)" },
-                { username: "Surgut_Challenger", label: "Surgut_Challenger" },
-                { username: "Tetiksh1Agrawal", label: "Tetiksh1Agrawal" },
+                { username: "Surgut_Challenger", label: "Surgut_Challenger (Yearly Three-check)" },
+                { username: "Tetiksh1Agrawal", label: "Tetiksh1Agrawal (Yearly)" },
                 { username: "maxwellssilvrhaMMer", label: "maxwellssilvrhaMMer" }
               ].map((player) => (
-                <button
-                  key={player.username}
-                  type="button"
-                  onClick={() => {
-                    setUsername(player.username);
-                    setSource("lichess");
-                  }}
-                  className={`text-[10px] px-2.5 py-1 rounded-md border transition-all ${
-                    username === player.username
-                      ? "bg-sky-500/20 border-sky-400 text-sky-300 font-bold"
-                      : "bg-slate-900/40 border-white/5 text-slate-400 hover:text-slate-200 hover:bg-slate-800"
-                  }`}
-                >
+                <option key={player.username} value={player.username} className="bg-slate-950 text-slate-100">
                   {player.label}
-                </button>
+                </option>
               ))}
-            </div>
+            </select>
           </div>
         )}
 
