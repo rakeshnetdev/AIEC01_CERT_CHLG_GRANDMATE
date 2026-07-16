@@ -247,23 +247,31 @@ The table below compares the naive dense vector retriever against the Hybrid RRF
 
 ## 7. Future Reflections
 
-* **What to Keep:** The stateful graph orchestration (LangGraph), the deterministic validation suite (python-chess checkmate and legality check), and the persistent user learner profile.
+### 7.1 What to Keep
+* **Stateful Graph Orchestration (LangGraph):** The conditional routing loops, state schema memory, and SQLite checkpointer structures are robust, clean, and provide excellent debugging traces in LangSmith.
+* **Deterministic Legality Verification (`python-chess`):** Relying on a rules engine rather than an LLM to check move legality is the single most critical guardrail, guaranteeing a 0% move hallucination rate.
+* **Persistent User Learner Profiles:** Storing user weaknesses in a database to inject them into the RAG context allows the AI coach to build a personalized relationship with the student.
 
-### 7.1 Commercial Vision & Product Opportunities
-Grandmate shifts the chess tech market from a simple "post-game utility" into a valuable educational and competitive platform:
-* **The "Magnus Translator" (Spectator Value):** Translates complex computer lines into plain-English strategic plans (e.g., *"White played a3 to stop Black's knight from occupying b4 and taking control of the queenside"*), resolving the issue of raw engine numbers.
-* **The Coaching & Parenting Platform (B2B / Multi-User Value):** Tracks player histories over months in a learner profile database to highlight weaknesses (e.g., *"Johnny plays openings well, but has a 45% blunder rate in King and Pawn endgames"*), helping coaches manage 20-30 students.
+### 7.2 What to Change / Improve
+* **Vector Store Migration:** Transition from the local ChromaDB memory instance to a managed vector database (such as Qdrant or Pinecone) to ensure persistence, high concurrency, and low latency in production.
+* **Granular Concept Sheet Chunking:** Refine the chunking parser to extract smaller, highly specific sub-sections of chess tactics (e.g., separating "relative pin" from "absolute pin") to reduce RAG prompt overhead.
+* **API Gateway Abstraction:** Standardize the LLM routing through a unified LiteLLM middleware wrapper to simplify handling future model integrations and fallback policies.
+
+### 7.3 Commercial Vision & Product Opportunities
+Grandmate shifts the chess tech market from a simple post-game engine report into a valuable educational and competitive platform:
+* **The "Magnus Translator" (Amateur / Spectator Value):** Translates complex computer lines into plain-English strategic plans (e.g., *"White played a3 to stop Black's knight from occupying b4 and taking control of the queenside"*), making raw engine evaluations comprehensible.
+* **The Coaching & Platform Dashboard (B2B / Academy Value):** Tracks player histories over months in a learner profile database to highlight weaknesses (e.g., *"Johnny plays openings well, but has a 45% blunder rate in King and Pawn endgames"*), helping coaches manage 20-30 students at scale.
 * **Opponent Scouting (Competitive Edge):** Scans an opponent's recent games and suggests targeted prep plans (e.g., *"Your opponent struggles against the Winawer variation; open with 1.e4"*).
 
-### 7.2 LLM Cost Economics & Hosting Strategy
+### 7.4 LLM Cost Economics & Hosting Strategy
 To minimize execution costs while maintaining accuracy, the system is designed around specific economic tiers:
 * **Cloud APIs (Gemini 1.5 Flash):** Highly cost-effective at $0.075 / million input tokens and $0.30 / million output tokens. The cost per game review is extremely low at ~$0.0004 USD, meaning zero idle costs.
 * **Self-Hosted GPU (Llama 3 8B):** Costs ~$0.50 to $1.20 per hour on GPU clouds. Break-even requires >1.5M reviews/month to be cheaper than Gemini APIs.
 * **Local Fine-Tuning Roadmap:** Host smaller models (e.g., Llama 3.2 3B or Qwen 1.5B) on cheap CPU servers ($5-$10/month) after gathering the first 5,000 high-quality reviews for training data.
 
-### 7.3 Active Tools vs. Scaling Architecture
+### 7.5 Active Tools vs. Scaling Architecture
 The prototype isolates local tools (Stockfish, python-chess) to ensure speed and 0% move hallucination rate. Production scaling incorporates external resources:
-* **Lichess Opening Explorer:** Queries move frequency and win/loss ratios to ground opening strategy advice.
+* **Lichess Opening Explorer:** Queries move frequency and win/loss ratios to ground opening strategy advice in empirical database ratios.
 * **Tavily Web Search:** Resolves non-board queries (e.g., historical players, tournaments) using semantic web searches to prevent factual hallucinations.
 
 ---
@@ -271,6 +279,15 @@ The prototype isolates local tools (Stockfish, python-chess) to ensure speed and
 ## 8. Next Steps for Demo Day
 
 To elevate the application from prototype to a market-ready production demo, we have established the following next steps:
-* **Interactive Chessboard Integration:** Add a draggable chessboard widget in the React UI so users can click on blunders and visually see the correct lines move on the board.
-* **Multi-turn Socratic Tutor:** Expand the narrator agent into a Socratic tutor that quizzes the user on their mistakes and adapts dynamically to their answers using session checkpoints.
-* **Opponent Scouting Reports:** Integrate a scouting tool that fetches an upcoming opponent's username and profiles their opening weaknesses.
+
+### 8.1 Interactive Chessboard Widget
+* **Technical Execution:** Integrate `react-chessboard` and `chess.js` into the React frontend. Clicking on an identified blunder or recommended move in the coach's explanation dynamically updates the board to show the corresponding position and moves.
+* **Value Add:** Transforms the user experience from passive reading to active, hands-on visual review.
+
+### 8.2 Multi-Turn Socratic Tutor Flow
+* **Technical Execution:** Extend the LangGraph control flow with a new stateful node that prompts the player with strategic questions (e.g., *"Why did your move Nd7 lose control of the e5 square?"*), processes their answer, and provides corrective feedback.
+* **Value Add:** Simulates the conversational feedback loops of a live human coach.
+
+### 8.3 Live Opponent Scouting Dashboard
+* **Technical Execution:** Implement a search bar in the React UI that accepts a Lichess/Chess.com username, crawls their public game history via FastAPI, aggregates their opening choices, and compiles an automated "opening prep plan" recommending counter-strategies.
+* **Value Add:** Provides competitive tournament players with immediate, actionable game prep utility.
