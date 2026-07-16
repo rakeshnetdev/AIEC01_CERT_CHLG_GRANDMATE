@@ -20,7 +20,7 @@ export function Header({ showDevInsights, setShowDevInsights, hasReport, theme, 
           <h1 className="text-xl font-bold tracking-tight bg-gradient-to-r from-sky-400 via-indigo-200 to-white bg-clip-text text-transparent">
             GRANDMATE
           </h1>
-          <p className="text-xs text-slate-500 font-medium tracking-wide">AI CHESS COACHING SYSTEM</p>
+          <p className="text-xs text-slate-500 font-medium tracking-wide">AI CHESS ANALYSIS & HELPING AGENT</p>
         </div>
       </div>
       <div className="flex items-center gap-4">

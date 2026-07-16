@@ -26,7 +26,7 @@ export function ChatPanel({
           <MessageSquare className="w-4 h-4" />
         </div>
         <div>
-          <h4 className="font-bold text-sm text-white">Ask your Grandmate Coach</h4>
+          <h4 className="font-bold text-sm text-white">Ask your Analysis Helper</h4>
           <p className="text-[10px] text-slate-500">Conversational context holds thread history</p>
         </div>
       </div>
@@ -54,7 +54,7 @@ export function ChatPanel({
         {isSendingChat && (
           <div className="self-start bg-slate-900 border border-white/5 text-slate-400 rounded-2xl rounded-bl-none p-3.5 text-sm flex items-center gap-2">
             <RefreshCw className="w-4 h-4 animate-spin text-sky-400" />
-            <span>Coach is thinking...</span>
+            <span>Helper is thinking...</span>
           </div>
         )}
         <div ref={chatEndRef} />

@@ -16,7 +16,7 @@ export function CoachSummary({ report }: CoachSummaryProps) {
         {/* Meta Row */}
         <div className="flex flex-wrap justify-between items-center gap-4 border-b border-white/5 pb-4">
           <div>
-            <h3 className="text-xl font-bold tracking-tight text-white">{report.username}'s Coaching Summary</h3>
+            <h3 className="text-xl font-bold tracking-tight text-white">{report.username}'s Game Analysis</h3>
             <p className="text-xs text-slate-400 mt-0.5">Report generated with Stockfish depth 16 & local semantic RAG</p>
           </div>
           <div className="flex flex-wrap items-center gap-3 text-sm">
@@ -29,7 +29,7 @@ export function CoachSummary({ report }: CoachSummaryProps) {
           </div>
         </div>
 
-        {/* Coaching Narration Text */}
+        {/* Analysis Narration Text */}
         <div className="text-slate-300 leading-relaxed text-sm whitespace-pre-line border-l-2 border-sky-500 pl-4 py-1">
           {report.summary}
         </div>

@@ -142,7 +142,7 @@ export default function App() {
             <h1 className="text-3xl font-extrabold tracking-wider bg-gradient-to-r from-sky-400 via-indigo-200 to-white bg-clip-text text-transparent">
               GRANDMATE
             </h1>
-            <p className="text-xs text-slate-500 font-bold tracking-widest mt-1">AI CHESS COACHING SYSTEM</p>
+            <p className="text-xs text-slate-500 font-bold tracking-widest mt-1">AI CHESS ANALYSIS & HELPING AGENT</p>
           </div>
           
           {/* Spinner and loading text */}
