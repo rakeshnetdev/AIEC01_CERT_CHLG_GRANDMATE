@@ -39,36 +39,41 @@ export function AnalysisForm({
     <section className="glass-panel rounded-2xl p-4 md:p-5 flex flex-col gap-4 shadow-xl relative overflow-hidden">
       <div className="absolute top-0 right-0 w-80 h-80 bg-sky-500/5 rounded-full filter blur-[80px] -z-10"></div>
       
-      <div className="flex justify-between items-center gap-4 flex-wrap border-b border-white/5 pb-3">
-        <div>
-          <h2 className="text-lg font-bold tracking-tight text-white flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-sky-400" /> Start Your Analysis
-          </h2>
-          <p className="text-xs text-slate-400 mt-0.5">Submit matches to get Stockfish evaluations and RAG-driven opening insights.</p>
+      <div className="flex flex-col gap-3 border-b border-white/5 pb-3">
+        <div className="flex items-center gap-2.5">
+          <div className="w-7 h-7 rounded-lg bg-sky-500/10 flex items-center justify-center border border-sky-500/20 text-sky-400">
+            <Sparkles className="w-4 h-4" />
+          </div>
+          <div>
+            <h2 className="text-base font-bold tracking-tight text-white">Start Your Analysis</h2>
+            <p className="text-[11px] text-slate-400 mt-0.5">Submit matches to get Stockfish evaluations and RAG-driven opening insights.</p>
+          </div>
         </div>
 
-        <button
-          type="submit"
-          form="analysis-form"
-          disabled={isAnalyzing}
-          className={`px-4 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 transition-all border ${
-            isAnalyzing 
-              ? "bg-slate-800 text-slate-500 border-white/5 cursor-not-allowed" 
-              : "bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 text-white border-transparent shadow-lg shadow-sky-500/20 active:scale-[0.98]"
-          }`}
-        >
-          {isAnalyzing ? (
-            <>
-              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-              <span>Analyzing...</span>
-            </>
-          ) : (
-            <>
-              <Search className="w-3.5 h-3.5" />
-              <span>Run Analysis</span>
-            </>
-          )}
-        </button>
+        <div className="flex">
+          <button
+            type="submit"
+            form="analysis-form"
+            disabled={isAnalyzing}
+            className={`px-4 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 transition-all border ${
+              isAnalyzing 
+                ? "bg-slate-800 text-slate-500 border-white/5 cursor-not-allowed" 
+                : "bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 text-white border-transparent shadow-lg shadow-sky-500/20 active:scale-[0.98]"
+            }`}
+          >
+            {isAnalyzing ? (
+              <>
+                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                <span>Analyzing...</span>
+              </>
+            ) : (
+              <>
+                <Search className="w-3.5 h-3.5" />
+                <span>Run Analysis</span>
+              </>
+            )}
+          </button>
+        </div>
       </div>
 
       <div className="flex border-b border-white/5 gap-4">
