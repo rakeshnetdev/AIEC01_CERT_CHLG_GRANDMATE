@@ -9,7 +9,8 @@ This document compiles the complete set of deliverables and self-assessment reco
 4. [Full-Stack Prototype & Deployment](#4-full-stack-prototype--deployment)
 5. [Evaluation Framework & Results](#5-evaluation-framework--results)
 6. [Advanced Retrieval & Iterative Improvements](#6-advanced-retrieval--iterative-improvements)
-7. [Future Reflections & Next Steps](#7-future-reflections--next-steps)
+7. [Future Reflections](#7-future-reflections)
+8. [Next Steps for Demo Day](#8-next-steps-for-demo-day)
 
 ---
 
@@ -241,10 +242,18 @@ The table below compares the naive dense vector retriever against the Hybrid RRF
 
 ---
 
-## 7. Future Reflections & Next Steps
+## 7. Future Reflections
 
 * **What to Keep:** The stateful graph orchestration (LangGraph), the deterministic validation suite (python-chess checkmate and legality check), and the persistent user learner profile.
-* **Roadmap for Demo Day:**
-  * **Interactive Chessboard Integration:** Add a draggable chessboard widget in the React UI so users can click on blunders and visually see the correct lines move on the board.
-  * **Multi-turn Socratic Tutor:** Expand the narrator agent into a Socratic tutor that quizzes the user on their mistakes and adapts dynamically to their answers using session checkpoints.
-  * **Opponent Scouting Reports:** Integrate a scouting tool that fetches an upcoming opponent's username and profiles their opening weaknesses.
+* **Reference Documentation:**
+  * For the core project requirements, scope definitions, and data source justifications, refer to [CAPSTONE_BRIEF.md](../final_docs/CAPSTONE_BRIEF.md).
+  * For comprehensive developer setup guides, API design patterns, and optimization records, refer to [my-notes.md](../final_docs/my-notes.md).
+
+---
+
+## 8. Next Steps for Demo Day
+
+To elevate the application from prototype to a market-ready production demo, we have established the following next steps:
+* **Interactive Chessboard Integration:** Add a draggable chessboard widget in the React UI so users can click on blunders and visually see the correct lines move on the board.
+* **Multi-turn Socratic Tutor:** Expand the narrator agent into a Socratic tutor that quizzes the user on their mistakes and adapts dynamically to their answers using session checkpoints.
+* **Opponent Scouting Reports:** Integrate a scouting tool that fetches an upcoming opponent's username and profiles their opening weaknesses.
