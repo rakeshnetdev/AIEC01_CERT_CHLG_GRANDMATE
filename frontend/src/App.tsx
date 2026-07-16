@@ -7,6 +7,7 @@ import { CoachSummary } from "./components/CoachSummary";
 import { MoveBreakdown } from "./components/MoveBreakdown";
 import { DevInsights } from "./components/DevInsights";
 import { ChatPanel } from "./components/ChatPanel";
+import { Crown, RefreshCw } from "lucide-react";
 
 export default function App() {
   // Session ID generation for conversational memory
@@ -21,6 +22,7 @@ export default function App() {
   const [activeDevTab, setActiveDevTab] = useState<"engine" | "rag" | "prompt">("engine");
   const [retrieverType, setRetrieverType] = useState<"hybrid" | "dense" | "sparse">("hybrid");
   const [praggGames, setPraggGames] = useState<PraggGame[]>([]);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
   
   // Loading & error states
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -40,11 +42,17 @@ export default function App() {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Load Pragg games on mount
+  // Load Pragg games on mount and handle 2-second splash screen timeout
   useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsInitialLoading(false);
+    }, 2000);
+
     fetchPraggGames()
       .then(setPraggGames)
       .catch((err) => console.error("Failed to load Pragg games:", err));
+
+    return () => clearTimeout(timer);
   }, []);
 
   // Handle analysis request
@@ -116,6 +124,35 @@ export default function App() {
       setIsSendingChat(false);
     }
   };
+
+  if (isInitialLoading) {
+    return (
+      <div className="min-h-screen bg-[#060814] flex flex-col items-center justify-center relative overflow-hidden">
+        {/* Background ambient glowing circles */}
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-sky-500/10 rounded-full filter blur-[100px]"></div>
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-indigo-500/10 rounded-full filter blur-[100px]"></div>
+        
+        {/* Logo and Branding */}
+        <div className="flex flex-col items-center gap-4 text-center z-10">
+          <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-sky-400 to-indigo-600 flex items-center justify-center shadow-2xl shadow-sky-500/30 animate-pulse">
+            <Crown className="w-9 h-9 text-white" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-extrabold tracking-wider bg-gradient-to-r from-sky-400 via-indigo-200 to-white bg-clip-text text-transparent">
+              GRANDMATE
+            </h1>
+            <p className="text-xs text-slate-500 font-bold tracking-widest mt-1">AI CHESS COACHING SYSTEM</p>
+          </div>
+          
+          {/* Spinner and loading text */}
+          <div className="flex items-center gap-2 text-xs text-sky-400 mt-8 font-semibold">
+            <RefreshCw className="w-4 h-4 animate-spin" />
+            <span>Initializing Chess Intelligence...</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#060814] text-slate-100 flex flex-col">
