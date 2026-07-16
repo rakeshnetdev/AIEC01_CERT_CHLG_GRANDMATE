@@ -24,6 +24,9 @@ def chat(messages: List[Dict[str, str]], model: str | None = None, **kw) -> str:
 
     import time
     import litellm.exceptions
+    import logging
+    
+    logger = logging.getLogger(__name__)
 
     for attempt in range(4):
         try:
@@ -41,4 +44,18 @@ def chat(messages: List[Dict[str, str]], model: str | None = None, **kw) -> str:
                 time.sleep(sleep_time)
             else:
                 raise e
+        except Exception as e:
+            # If the primary model fails (due to 404, quota limits, or auth errors), invoke the fallback immediately
+            if fallbacks:
+                logger.warning(f"Primary model {primary_model} query failed: {e}. Trying fallback model {fallbacks[0]}...")
+                try:
+                    response = litellm.completion(
+                        model=fallbacks[0],
+                        messages=messages,
+                        **kw
+                    )
+                    return response.choices[0].message.content
+                except Exception as fallback_err:
+                    logger.error(f"Fallback model query also failed: {fallback_err}")
+            raise e
 

@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     tavily_api_key: Optional[str] = None
     db_path: str = "coach.db"
     chroma_db_path: str = "data/chroma"
+    retriever_type: str = "hybrid"
 
     # LangSmith Tracing
     langchain_tracing_v2: str = "false"

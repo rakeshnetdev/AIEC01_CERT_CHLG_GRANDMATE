@@ -4,12 +4,35 @@ from typing import List
 # Simple list of common profanity or unsafe terms to filter for the MVP
 BANNED_WORDS = {"profane", "explicit", "weapons"}
 
-# Safe list of keywords associated with chess, greetings, or learning
+# Safe list of keywords associated with chess, greetings, learning, strategy, or tutoring
 CHESS_KEYWORDS = {
-    "chess", "game", "play", "move", "sicilian", "french", "ruy", "lopez", 
-    "opening", "tactic", "puzzle", "blunder", "mistake", "fork", "pin", "check", 
-    "king", "queen", "rook", "bishop", "knight", "pawn", "pgn", "fen", "eval", 
-    "stockfish", "review", "coaching", "hello", "hi", "hey", "help", "thanks"
+    # Pieces & Board
+    "chess", "game", "play", "move", "moves", "moved", "played", "playing", "player", "players",
+    "king", "kings", "queen", "queens", "rook", "rooks", "bishop", "bishops", "knight", "knights",
+    "pawn", "pawns", "piece", "pieces", "board", "square", "squares", "rank", "file", "diagonal",
+    "pgn", "fen", "eval", "stockfish", "castle", "castling", "captured", "capture", "capturing",
+    
+    # Openings & Names
+    "opening", "openings", "sicilian", "french", "ruy", "lopez", "caro", "kann", "slav", "indian",
+    
+    # Tactics & Mistakes
+    "tactic", "tactics", "tactical", "puzzle", "blunder", "blunders", "mistake", "mistakes",
+    "inaccuracy", "inaccuracies", "fork", "pin", "pins", "check", "checkmate", "mate", "threat",
+    "threats", "sacrifice", "sac", "exchange", "trade", "trades", "discovered", "double", "hanging",
+    
+    # Strategy & Positional Concepts
+    "strategy", "strategies", "strategic", "plan", "plans", "planning", "structure", "structures",
+    "weakness", "weaknesses", "weak", "strong", "strength", "strengths", "advantage", "tempo",
+    "space", "center", "position", "positions", "positional", "defense", "defence", "defend",
+    "defences", "defending", "attack", "attacks", "attacking", "initiative", "control", "development",
+    
+    # Conversational Follow-up, Learning & Coaching
+    "why", "how", "what", "where", "explain", "explanation", "tell", "show", "describe",
+    "learn", "learning", "coach", "coaching", "tutor", "tutoring", "guide", "guidance",
+    "understand", "understanding", "suggestion", "suggestions", "suggest", "advice", "advise",
+    "improve", "improvement", "rating", "elo", "analyse", "analysis", "analyzer", "report", "summary",
+    "hello", "hi", "hey", "help", "thanks", "thank", "thankyou", "please", "yes", "no", "ok", "okay",
+    "good", "bad", "better", "worse", "correct", "wrong", "line", "lines", "idea", "ideas"
 }
 
 def validate_request(text: str) -> None:
