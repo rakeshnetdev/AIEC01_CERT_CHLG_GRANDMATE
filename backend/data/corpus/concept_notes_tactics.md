@@ -40,7 +40,7 @@ A stalemate trick is an endgame tactical save where a losing player intentionall
 Underpromotion occurs when a pawn reaches the eighth rank but is intentionally promoted to a Knight, Rook, or Bishop instead of a Queen. This tactic is used to either deliver a critical Knight fork, avoid an immediate stalemate draw, or control a specific square that a Queen could not.
 ## Trapped Piece
 A trapped piece is a motif where an enemy piece ventures too deep into hostile territory or gets crowded by its own army, leaving it with zero safe squares to retreat to. Once its movement is completely restricted, it can be systematically targeted and won by a lower-value piece.
-## En Passant Tactic
+## En Passant
 En passant tactics leverage the unique pawn-capturing rule to create sudden lines of attack. By forcing an opponent's pawn to advance two squares past a friendly pawn, the en passant capture can unexpectedly open up a file, break open a center, or discover an attack on a hidden target.
 ## King Hunt
 A king hunt is a tactical sequence where a player forces the enemy King out of its safe defensive fortress and drives it into the open board. Through a relentless series of checks and sacrifices, the King is dragged into the middle of the board where it is ultimately checkmated.
