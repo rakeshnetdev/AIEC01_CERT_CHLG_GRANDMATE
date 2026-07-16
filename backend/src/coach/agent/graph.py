@@ -53,7 +53,7 @@ def fetch_and_analyse_node(state: CoachState) -> dict:
             games = fetch_games(username=username, source=source, max_games=1)
             if not games:
                 return {"output": "Failed to fetch games for user."}
-            game = games[0]
+            game = Game(**games[0])
             
     if not game:
         return {"output": "No game data provided."}
