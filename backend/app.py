@@ -22,7 +22,8 @@ from coach.schemas.models import (
     Drill,
     CoachReport,
     Source,
-    DeveloperInsight
+    DeveloperInsight,
+    GroundingEvent
 )
 from coach.agent.graph import compile_coach_graph
 from coach.guardrails import validate_request, is_safe_output
@@ -292,15 +293,20 @@ def review_game(request: ReviewRequest):
             if ma.theme.lower() not in ["tactics", "opening", "endgame", "check"]:
                 rag_queries.append(ma.theme)
             
+    # Build grounding log from graph state
+    raw_grounding_log = final_state.get("grounding_log") or []
+    grounding_events = [GroundingEvent(**evt) if isinstance(evt, dict) else evt for evt in raw_grounding_log]
+    
     system_prompt = _build_system_prompt(game, analyses, rag_context)
     dev_insight = DeveloperInsight(
         graph_state="finished",
-        active_nodes=["fetch_and_analyse", "retrieve_rag_context", "narrator_agent"],
+        active_nodes=["fetch_and_analyse", "retrieve_rag_context", "narrator_agent", "grounding_guard"],
         rag_queries=rag_queries,
         rag_context=rag_context,
         raw_prompt=system_prompt,
         stockfish_raw=analyses,
-        retriever_type=request.retriever_type or "hybrid"
+        retriever_type=request.retriever_type or "hybrid",
+        grounding_log=grounding_events
     )
     
     # Calculate game status based on result and user_color

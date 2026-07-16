@@ -4,8 +4,8 @@ import type { CoachReport } from "../lib/api";
 
 interface DevInsightsProps {
   report: CoachReport;
-  activeDevTab: "engine" | "rag" | "prompt";
-  setActiveDevTab: (t: "engine" | "rag" | "prompt") => void;
+  activeDevTab: "engine" | "rag" | "prompt" | "grounding";
+  setActiveDevTab: (t: "engine" | "rag" | "prompt" | "grounding") => void;
 }
 
 export function DevInsights({ report, activeDevTab, setActiveDevTab }: DevInsightsProps) {
@@ -44,6 +44,14 @@ export function DevInsights({ report, activeDevTab, setActiveDevTab }: DevInsigh
             }`}
           >
             📝 LLM Prompt
+          </button>
+          <button
+            onClick={() => setActiveDevTab("grounding")}
+            className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+              activeDevTab === "grounding" ? "bg-indigo-500/20 text-indigo-300" : "text-slate-500 hover:text-slate-300"
+            }`}
+          >
+            🛡️ Grounding
           </button>
         </div>
       </div>
@@ -119,6 +127,59 @@ export function DevInsights({ report, activeDevTab, setActiveDevTab }: DevInsigh
             <div className="bg-slate-950 p-4 rounded-xl border border-white/5 max-h-[350px] overflow-y-auto text-xs font-mono text-slate-300 whitespace-pre-wrap leading-relaxed">
               {report.developer_insight.raw_prompt}
             </div>
+          </div>
+        )}
+
+        {activeDevTab === "grounding" && (
+          <div className="flex flex-col gap-4">
+            <span className="text-xs font-semibold text-slate-400 tracking-wider">GROUNDING GUARD LOOP HISTORY:</span>
+            {(!report.developer_insight.grounding_log || report.developer_insight.grounding_log.length === 0) ? (
+              <div className="bg-slate-900/60 p-4 rounded-lg border border-white/10 text-xs text-slate-500 italic">
+                No grounding events recorded for this analysis.
+              </div>
+            ) : (
+              <div className="flex flex-col gap-3">
+                {report.developer_insight.grounding_log.map((evt, idx) => (
+                  <div
+                    key={idx}
+                    className={`rounded-xl border p-4 text-xs transition-all ${
+                      evt.approved
+                        ? "border-emerald-500/30 bg-emerald-500/5"
+                        : "border-rose-500/30 bg-rose-500/5"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <span className={`inline-block w-2.5 h-2.5 rounded-full ${
+                          evt.approved ? "bg-emerald-400" : "bg-rose-400"
+                        }`} />
+                        <span className="font-bold text-white">Attempt #{evt.attempt}</span>
+                        <span className="bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider">
+                          {evt.mode === "llm_judge" ? "LLM Judge" : "Deterministic"}
+                        </span>
+                      </div>
+                      <span className={`font-bold uppercase text-[11px] tracking-wider ${
+                        evt.approved ? "text-emerald-400" : "text-rose-400"
+                      }`}>
+                        {evt.approved ? "✓ APPROVED" : "✗ REJECTED"}
+                      </span>
+                    </div>
+                    {!evt.approved && evt.critique && (
+                      <div className="mt-2 bg-slate-950/60 p-3 rounded-lg border border-white/5">
+                        <span className="text-[10px] font-semibold text-rose-400 uppercase tracking-wider">Critique:</span>
+                        <p className="text-slate-300 mt-1 leading-relaxed">{evt.critique}</p>
+                      </div>
+                    )}
+                    {evt.narrative_snippet && (
+                      <div className="mt-2 bg-slate-950/60 p-3 rounded-lg border border-white/5">
+                        <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Narrative Snapshot:</span>
+                        <p className="text-slate-400 mt-1 font-mono leading-relaxed">{evt.narrative_snippet}…</p>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>

@@ -61,6 +61,14 @@ class Drill(BaseModel):
     rating: int
     url: str
 
+class GroundingEvent(BaseModel):
+    attempt: int
+    mode: str  # "llm_judge" or "deterministic"
+    approved: bool
+    error_category: str = "none"
+    critique: str = ""
+    narrative_snippet: str = ""  # first 200 chars of the narrative at this attempt
+
 class DeveloperInsight(BaseModel):
     graph_state: str = "finished"
     active_nodes: List[str] = []
@@ -69,6 +77,7 @@ class DeveloperInsight(BaseModel):
     raw_prompt: str = ""
     stockfish_raw: List[MoveAnalysis] = []
     retriever_type: str = "hybrid"
+    grounding_log: List[GroundingEvent] = []
 
 class CoachReport(BaseModel):
     username: str

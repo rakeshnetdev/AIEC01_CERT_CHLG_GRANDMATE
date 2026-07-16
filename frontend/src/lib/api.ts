@@ -38,6 +38,15 @@ export interface MoveAnalysis {
   pv_san: string[];
 }
 
+export interface GroundingEvent {
+  attempt: number;
+  mode: string;
+  approved: boolean;
+  error_category: string;
+  critique: string;
+  narrative_snippet: string;
+}
+
 export interface DeveloperInsight {
   graph_state: string;
   active_nodes: string[];
@@ -46,6 +55,7 @@ export interface DeveloperInsight {
   raw_prompt: string;
   stockfish_raw: MoveAnalysis[];
   retriever_type: string;
+  grounding_log?: GroundingEvent[];
 }
 
 export interface CoachReport {

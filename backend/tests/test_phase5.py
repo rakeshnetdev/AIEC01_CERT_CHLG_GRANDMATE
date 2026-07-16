@@ -152,10 +152,24 @@ def test_review_and_chat_session_continuity(mock_chat, mock_retrieve_context, mo
         {"best_uci": "e2e4", "pv_uci": ["e2e4"], "score_cp": 35},
     ]
     mock_retrieve_context.return_value = []
-    mock_chat.side_effect = [
+    expected_replies = [
         "Welcome! e4 is great.", # Response for review
         "The weaknesses are..." # Response for follow-up chat
     ]
+    reply_iter = iter(expected_replies)
+    
+    def chat_side_effect(messages, **kwargs):
+        # Determine if it's the Judge query
+        last_msg = messages[-1]
+        msg_content = last_msg["content"] if isinstance(last_msg, dict) else last_msg.content
+        if "JSON format" in msg_content or "certification evaluator" in msg_content:
+            return '{"explanation_approved": true, "error_category": "none", "detailed_critique": ""}'
+        try:
+            return next(reply_iter)
+        except StopIteration:
+            return "Default conversational response"
+            
+    mock_chat.side_effect = chat_side_effect
     
     session_id = "test_shared_session_123"
     pgn_input = '[White "magnus"]\n[Black "hikaru"]\n[Opening "Sicilian Defense"]\n[Result "*"]\n\n1. e4 c5 *'
