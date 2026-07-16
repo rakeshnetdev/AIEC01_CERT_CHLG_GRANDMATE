@@ -105,8 +105,8 @@ export function AnalysisForm({
 
         {/* Quick Select Sample Players */}
         {activeTab === "fetch" && (
-          <div className="flex flex-col gap-2 border-t border-white/5 pt-4">
-            <label className="text-xs font-semibold text-slate-400 tracking-wider">OR SELECT AN ACTIVE TESTING PROFILE</label>
+          <div className="flex flex-col gap-1.5 border-t border-white/5 pt-3">
+            <label className="text-[10px] font-bold text-slate-500 tracking-wider uppercase">Or Select Active Profile</label>
             <select
               value={username}
               onChange={(e) => {
@@ -115,9 +115,9 @@ export function AnalysisForm({
                   setSource("lichess");
                 }
               }}
-              className="bg-slate-900/60 border border-white/10 rounded-lg p-3 text-sm focus:border-sky-400 focus:outline-none text-slate-200"
+              className="w-full md:max-w-xs bg-slate-900/60 border border-white/10 rounded-lg p-2 text-xs focus:border-sky-400 focus:outline-none text-slate-300"
             >
-              <option value="">-- Choose active player profile --</option>
+              <option value="">-- Choose active profile --</option>
               {[
                 { username: "Arkadiy_Khromaev", label: "Arkadiy_Khromaev (Yearly H)" },
                 { username: "Kurald_Galain", label: "Kurald_Galain (Yearly Bullet)" },
