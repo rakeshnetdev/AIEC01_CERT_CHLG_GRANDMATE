@@ -77,6 +77,35 @@ This system follows a **5-layer agentic architecture**:
 
 ---
 
+## 📂 Repository Structure
+
+The project is structured as a monorepo split into decoupled frontend and backend service contexts:
+
+```
+├── backend/                  # FastAPI service (all business logic, engine calls, & vector db storage)
+│   ├── app.py                # REST API endpoints (/review, /chat, /health)
+│   ├── pyproject.toml        # Backend dependencies & build configurations
+│   ├── config/               # Settings & system environment declarations
+│   └── src/coach/            # Core logical packages
+│       ├── agent/            # LangGraph state machine workflow & node orchestration
+│       ├── analysis/         # Stockfish engine evaluation and NAG mistake classification
+│       ├── rag/              # ChromaDB vector collection and BM25 RRF retriever
+│       └── schemas/          # Pydantic models & request-response schemas
+│
+├── frontend/                 # React SPA UI (Vite + TS calling backend endpoint via VITE_BACKEND_URL)
+│   ├── src/                  # App components, styled hooks, and API client
+│   └── package.json          # Node dependencies & scripts
+│
+├── docs/                     # Final root-level deliverables, system architecture, & project plans
+│   ├── Deliverables.md       # Full project deliverables & self-assessment evidence
+│   ├── ARCHITECTURE.md       # High-level component & infrastructure designs
+│   └── PLAN.md               # Chronological project milestones
+│
+└── final_docs/               # Submodule directory maintaining official documentation sources
+```
+
+---
+
 ## ⚙️ Technology Stack
 
 | Component | Technology | Purpose |
