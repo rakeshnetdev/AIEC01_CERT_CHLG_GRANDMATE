@@ -1,6 +1,6 @@
 import React from "react";
 import { Search, User, Sparkles, RefreshCw, ShieldAlert } from "lucide-react";
-import type { Source } from "../lib/api";
+import type { Source, PraggGame } from "../lib/api";
 
 interface AnalysisFormProps {
   username: string;
@@ -16,6 +16,7 @@ interface AnalysisFormProps {
   isAnalyzing: boolean;
   error: string | null;
   onSubmit: (e: React.FormEvent) => void;
+  praggGames: PraggGame[];
 }
 
 export function AnalysisForm({
@@ -31,7 +32,8 @@ export function AnalysisForm({
   setRetrieverType,
   isAnalyzing,
   error,
-  onSubmit
+  onSubmit,
+  praggGames
 }: AnalysisFormProps) {
   return (
     <section className="glass-panel rounded-2xl p-6 md:p-8 flex flex-col gap-6 shadow-xl relative overflow-hidden">
@@ -125,15 +127,39 @@ export function AnalysisForm({
             </div>
           </div>
         ) : (
-          <div className="flex flex-col gap-2">
-            <label className="text-xs font-semibold text-slate-400 tracking-wider">PGN GAME DATA</label>
-            <textarea
-              rows={5}
-              placeholder="Paste standard PGN format block..."
-              value={pgn}
-              onChange={(e) => setPgn(e.target.value)}
-              className="bg-slate-900/60 border border-white/10 rounded-lg p-3 text-sm font-mono focus:border-sky-400 focus:outline-none resize-none"
-            />
+          <div className="flex flex-col gap-4">
+            {praggGames && praggGames.length > 0 && (
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-bold text-slate-500 tracking-wider uppercase">Load Praggnanandhaa's Top Games</label>
+                <select
+                  onChange={(e) => {
+                    if (e.target.value) {
+                      setPgn(e.target.value);
+                    }
+                  }}
+                  className="w-full md:max-w-md bg-slate-900/60 border border-white/10 rounded-lg p-2 text-xs focus:border-sky-400 focus:outline-none text-slate-300"
+                  defaultValue=""
+                >
+                  <option value="">-- Select a game from Praggnanandhaa.pgn --</option>
+                  {praggGames.map((game, idx) => (
+                    <option key={idx} value={game.pgn} className="bg-slate-950 text-slate-100">
+                      {game.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            <div className="flex flex-col gap-2">
+              <label className="text-xs font-semibold text-slate-400 tracking-wider">PGN GAME DATA</label>
+              <textarea
+                rows={5}
+                placeholder="Paste standard PGN format block..."
+                value={pgn}
+                onChange={(e) => setPgn(e.target.value)}
+                className="bg-slate-900/60 border border-white/10 rounded-lg p-3 text-sm font-mono focus:border-sky-400 focus:outline-none resize-none"
+              />
+            </div>
           </div>
         )}
 

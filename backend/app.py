@@ -391,3 +391,42 @@ def chat_message(request: ChatRequest):
         "reply": reply,
         "developer_insight": dev_insight
     }
+
+
+@app.get("/pragg-games")
+def get_pragg_games():
+    """Reads the first 6 games from Praggnanandhaa.pgn and returns their metadata and raw PGN text."""
+    pgn_path = "/Users/sriraki/Desktop/CodePractice/ai_practice/AE-CH/prj/grandmate/backend/data/corpus/Praggnanandhaa.pgn"
+    if not os.path.exists(pgn_path):
+        pgn_path = "data/corpus/Praggnanandhaa.pgn"
+        
+    if not os.path.exists(pgn_path):
+        logger.warning(f"Pragg PGN file not found at {pgn_path}")
+        return []
+        
+    games = []
+    import chess.pgn
+    try:
+        with open(pgn_path, "r", encoding="utf-8") as f:
+            for _ in range(6):
+                game = chess.pgn.read_game(f)
+                if not game:
+                    break
+                    
+                exporter = chess.pgn.StringExporter(headers=True, variations=False, comments=False)
+                pgn_str = game.accept(exporter)
+                
+                white = game.headers.get("White", "Unknown")
+                black = game.headers.get("Black", "Unknown")
+                result = game.headers.get("Result", "*")
+                date = game.headers.get("Date", "Unknown")
+                
+                games.append({
+                    "label": f"{white} vs {black} ({date}) - {result}",
+                    "pgn": pgn_str
+                })
+    except Exception as e:
+        logger.error(f"Error reading Praggnanandhaa.pgn: {e}")
+        return []
+            
+    return games

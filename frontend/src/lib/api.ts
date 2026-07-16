@@ -115,3 +115,16 @@ export async function chatMessage(request: ChatRequest): Promise<ChatResponse> {
 
   return response.json();
 }
+
+export interface PraggGame {
+  label: string;
+  pgn: string;
+}
+
+export async function fetchPraggGames(): Promise<PraggGame[]> {
+  const response = await fetch(`${BACKEND_URL}/pragg-games`);
+  if (!response.ok) {
+    throw new Error("Failed to load Praggnanandhaa games.");
+  }
+  return response.json();
+}

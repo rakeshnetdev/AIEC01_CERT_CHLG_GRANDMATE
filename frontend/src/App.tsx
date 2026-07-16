@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
-import { reviewGame, chatMessage } from "./lib/api";
-import type { CoachReport, Source } from "./lib/api";
+import { reviewGame, chatMessage, fetchPraggGames } from "./lib/api";
+import type { CoachReport, Source, PraggGame } from "./lib/api";
 import { Header } from "./components/Header";
 import { AnalysisForm } from "./components/AnalysisForm";
 import { CoachSummary } from "./components/CoachSummary";
@@ -20,6 +20,7 @@ export default function App() {
   const [showDevInsights, setShowDevInsights] = useState(false);
   const [activeDevTab, setActiveDevTab] = useState<"engine" | "rag" | "prompt">("engine");
   const [retrieverType, setRetrieverType] = useState<"hybrid" | "dense" | "sparse">("hybrid");
+  const [praggGames, setPraggGames] = useState<PraggGame[]>([]);
   
   // Loading & error states
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -38,6 +39,13 @@ export default function App() {
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  // Load Pragg games on mount
+  useEffect(() => {
+    fetchPraggGames()
+      .then(setPraggGames)
+      .catch((err) => console.error("Failed to load Pragg games:", err));
+  }, []);
 
   // Handle analysis request
   const handleAnalyze = async (e: React.FormEvent) => {
@@ -132,6 +140,7 @@ export default function App() {
           isAnalyzing={isAnalyzing}
           error={error}
           onSubmit={handleAnalyze}
+          praggGames={praggGames}
         />
 
         {/* Step 2: Dashboard Content */}
