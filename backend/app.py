@@ -289,7 +289,8 @@ def review_game(request: ReviewRequest):
     rag_queries = [game.opening_name] if game.opening_name else []
     for ma in analyses:
         if ma.label != "ok" and ma.theme:
-            rag_queries.append(ma.theme)
+            if ma.theme.lower() not in ["tactics", "opening", "endgame", "check"]:
+                rag_queries.append(ma.theme)
             
     system_prompt = _build_system_prompt(game, analyses, rag_context)
     dev_insight = DeveloperInsight(
@@ -298,7 +299,8 @@ def review_game(request: ReviewRequest):
         rag_queries=rag_queries,
         rag_context=rag_context,
         raw_prompt=system_prompt,
-        stockfish_raw=analyses
+        stockfish_raw=analyses,
+        retriever_type=request.retriever_type or "hybrid"
     )
     
     return CoachReport(
@@ -374,7 +376,8 @@ def chat_message(request: ChatRequest):
     rag_queries = [game.opening_name] if game.opening_name else []
     for ma in analyses:
         if ma.label != "ok" and ma.theme:
-            rag_queries.append(ma.theme)
+            if ma.theme.lower() not in ["tactics", "opening", "endgame", "check"]:
+                rag_queries.append(ma.theme)
             
     dev_insight = DeveloperInsight(
         graph_state="finished (chat follow-up)",
@@ -382,10 +385,50 @@ def chat_message(request: ChatRequest):
         rag_queries=rag_queries,
         rag_context=rag_context,
         raw_prompt=raw_prompt,
-        stockfish_raw=analyses
+        stockfish_raw=analyses,
+        retriever_type=current_state.values.get("retriever_type") or "hybrid"
     )
     
     return {
         "reply": reply,
         "developer_insight": dev_insight
     }
+
+
+@app.get("/carlsen-games")
+def get_carlsen_games():
+    """Reads the first 6 games from Carlsen.pgn and returns their metadata and raw PGN text."""
+    pgn_path = "/Users/sriraki/Desktop/CodePractice/ai_practice/AE-CH/prj/grandmate/backend/data/corpus/Carlsen.pgn"
+    if not os.path.exists(pgn_path):
+        pgn_path = "data/corpus/Carlsen.pgn"
+        
+    if not os.path.exists(pgn_path):
+        logger.warning(f"Carlsen PGN file not found at {pgn_path}")
+        return []
+        
+    games = []
+    import chess.pgn
+    try:
+        with open(pgn_path, "r", encoding="utf-8") as f:
+            for _ in range(6):
+                game = chess.pgn.read_game(f)
+                if not game:
+                    break
+                    
+                exporter = chess.pgn.StringExporter(headers=True, variations=False, comments=False)
+                pgn_str = game.accept(exporter)
+                
+                white = game.headers.get("White", "Unknown")
+                black = game.headers.get("Black", "Unknown")
+                result = game.headers.get("Result", "*")
+                date = game.headers.get("Date", "Unknown")
+                
+                games.append({
+                    "label": f"{white} vs {black} ({date}) - {result}",
+                    "pgn": pgn_str
+                })
+    except Exception as e:
+        logger.error(f"Error reading Carlsen.pgn: {e}")
+        return []
+            
+    return games

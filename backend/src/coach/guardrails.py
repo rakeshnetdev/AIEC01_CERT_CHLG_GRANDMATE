@@ -50,11 +50,25 @@ def validate_request(text: str) -> None:
         return
         
     # 3. Block general off-topic questions (e.g. baking, history)
-    # Check if there is at least one chess/learning keyword present.
-    # Note: If it's a short text or greeting, we allow it. Otherwise, we verify relevance.
     words = set(re.findall(r'\b\w+\b', text_lower))
-    if words and not words.intersection(CHESS_KEYWORDS):
+    intersection = words.intersection(CHESS_KEYWORDS)
+    if not intersection:
         raise ValueError("Off-topic request: Please ask chess-related questions.")
+        
+    # 4. Check if the intersection consists ONLY of generic conversational words
+    # and the input is long enough to be an off-topic sentence, reject it.
+    conversational_words = {
+        "why", "how", "what", "where", "explain", "explanation", "tell", "show", "describe",
+        "learn", "learning", "hello", "hi", "hey", "help", "thanks", "thank", "thankyou", "please",
+        "yes", "no", "ok", "okay", "good", "bad", "better", "worse", "correct", "wrong", "idea", "ideas",
+        "to", "a", "an", "the", "is", "are", "was", "were", "be", "been", "have", "has", "had", "do", "does", "did"
+    }
+    
+    # If the ONLY matching keywords are conversational, we check if it has a chess move (e.g., Qd7, e4)
+    if intersection.issubset(conversational_words) and len(words) >= 4:
+        has_chess_move = any(re.match(r'^[a-h][1-8]$|^[kqrbn][a-h1-8]?[a-h][1-8]$|^o-o', w) for w in words)
+        if not has_chess_move:
+            raise ValueError("Off-topic request: Please ask chess-related questions.")
 
 
 def is_safe_output(text: str) -> bool:

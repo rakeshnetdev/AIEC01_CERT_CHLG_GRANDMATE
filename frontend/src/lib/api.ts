@@ -45,6 +45,7 @@ export interface DeveloperInsight {
   rag_context: string;
   raw_prompt: string;
   stockfish_raw: MoveAnalysis[];
+  retriever_type: string;
 }
 
 export interface CoachReport {
@@ -68,6 +69,7 @@ export interface ReviewRequest {
   max_games?: number;
   pgn?: string;
   session_id?: string;
+  retriever_type?: string;
 }
 
 export async function reviewGame(request: ReviewRequest): Promise<CoachReport> {
@@ -111,5 +113,18 @@ export async function chatMessage(request: ChatRequest): Promise<ChatResponse> {
     throw new Error(errorData.detail || "Failed to send message.");
   }
 
+  return response.json();
+}
+
+export interface CarlsenGame {
+  label: string;
+  pgn: string;
+}
+
+export async function fetchCarlsenGames(): Promise<CarlsenGame[]> {
+  const response = await fetch(`${BACKEND_URL}/carlsen-games`);
+  if (!response.ok) {
+    throw new Error("Failed to load Magnus Carlsen games.");
+  }
   return response.json();
 }

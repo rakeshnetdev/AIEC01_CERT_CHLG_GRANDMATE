@@ -33,7 +33,7 @@ class Engine:
         board = chess.Board(fen)
         d = depth or self.default_depth
 
-        info = self._engine.analyse(board, chess.engine.Limit(depth=d))
+        info = self._engine.analyse(board, chess.engine.Limit(depth=d, time=0.1))
 
         # Extract principal variation (PV)
         pv = info.get("pv", [])
@@ -42,10 +42,9 @@ class Engine:
         if pv_uci:
             best_uci = pv_uci[0]
         else:
-            # Fallback if PV is empty
-            play_result = self._engine.play(board, chess.engine.Limit(depth=d))
-            best_move = play_result.move
-            best_uci = best_move.uci() if best_move else ""
+            # Fallback if PV is empty (checkmate/stalemate/no legal moves)
+            legal_moves = list(board.legal_moves)
+            best_uci = legal_moves[0].uci() if legal_moves else ""
             pv_uci = [best_uci] if best_uci else []
 
         # Extract score relative to the side to move (board.turn)

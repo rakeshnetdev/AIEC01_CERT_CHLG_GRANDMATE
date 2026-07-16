@@ -96,7 +96,8 @@ def retrieve_rag_context_node(state: CoachState) -> dict:
         
     for ma in analyses:
         if ma.label != "ok" and ma.theme:
-            queries.append(ma.theme)
+            if ma.theme.lower() not in ["tactics", "opening", "endgame", "check"]:
+                queries.append(ma.theme)
             
     # De-duplicate queries
     seen = set()

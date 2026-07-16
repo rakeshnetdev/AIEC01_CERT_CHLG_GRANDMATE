@@ -44,14 +44,14 @@ def _classify_tactical_theme(board_before: chess.Board, board_after: chess.Board
     if label == "ok":
         return None
         
-    # Check for Pin / Opening / Endgame on the starting board state
-    theme = classify_theme(board_before, ply, move.from_square)
+    # Check for Pin / Opening / Endgame / En Passant / Promotion on the starting board state
+    theme = classify_theme(board_before, ply, move.from_square, move)
     
-    # If generic 'Tactics' was returned, check if the resulting move checked the opponent
+    # If generic 'Tactics' was returned, check the board_after position for checks/double checks or forks
     if theme == "Tactics":
-        theme_after = classify_theme(board_after, ply, move.to_square)
-        if theme_after == "Check":
-            return "Check"
+        theme_after = classify_theme(board_after, ply, move.to_square, move)
+        if theme_after in ["Double Check", "Check", "Fork"]:
+            return theme_after
             
     return theme
 
