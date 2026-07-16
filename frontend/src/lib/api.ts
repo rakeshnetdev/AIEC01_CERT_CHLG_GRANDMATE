@@ -45,6 +45,7 @@ export interface DeveloperInsight {
   rag_context: string;
   raw_prompt: string;
   stockfish_raw: MoveAnalysis[];
+  retriever_type: string;
 }
 
 export interface CoachReport {
@@ -68,6 +69,7 @@ export interface ReviewRequest {
   max_games?: number;
   pgn?: string;
   session_id?: string;
+  retriever_type?: string;
 }
 
 export async function reviewGame(request: ReviewRequest): Promise<CoachReport> {

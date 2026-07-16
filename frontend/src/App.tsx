@@ -31,6 +31,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<"fetch" | "paste">("fetch");
   const [showDevInsights, setShowDevInsights] = useState(false);
   const [activeDevTab, setActiveDevTab] = useState<"engine" | "rag" | "prompt">("engine");
+  const [retrieverType, setRetrieverType] = useState<"hybrid" | "dense" | "sparse">("hybrid");
   
   // Loading & error states
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -60,8 +61,8 @@ export default function App() {
     
     try {
       const payload = activeTab === "fetch" 
-        ? { username, source, max_games: 1, session_id: sessionId }
-        : { pgn, session_id: sessionId };
+        ? { username, source, max_games: 1, session_id: sessionId, retriever_type: retrieverType }
+        : { pgn, session_id: sessionId, retriever_type: retrieverType };
         
       if (activeTab === "fetch" && !username.trim()) {
         throw new Error("Please enter a username.");
@@ -223,6 +224,32 @@ export default function App() {
                 />
               </div>
             )}
+
+            {/* Retriever Strategy Selection Row */}
+            <div className="flex flex-col gap-2 border-t border-white/5 pt-4">
+              <label className="text-xs font-semibold text-slate-400 tracking-wider">RETRIEVER STRATEGY</label>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { id: "hybrid", label: "Fused Hybrid (RRF)", desc: "Best of both: Vector + Keyword" },
+                  { id: "dense", label: "Semantic Search", desc: "Embeddings only" },
+                  { id: "sparse", label: "Keyword (BM25)", desc: "Exact query matches" }
+                ].map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => setRetrieverType(item.id as any)}
+                    className={`flex-1 min-w-[200px] text-left p-3 rounded-lg border text-xs transition-all ${
+                      retrieverType === item.id 
+                        ? "bg-sky-500/10 border-sky-400 text-sky-300 shadow-lg shadow-sky-500/5" 
+                        : "bg-slate-900/60 border-white/10 text-slate-400 hover:text-slate-300"
+                    }`}
+                  >
+                    <strong className="block font-bold text-slate-200 mb-0.5">{item.label}</strong>
+                    <span>{item.desc}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
 
             <button
               type="submit"
@@ -510,9 +537,14 @@ export default function App() {
                     {activeDevTab === "rag" && (
                       <div className="flex flex-col gap-4">
                         <div className="flex flex-col gap-2">
-                          <span className="text-xs font-semibold text-slate-400 tracking-wider">RETRIEVER CALL:</span>
+                          <span className="text-xs font-semibold text-slate-400 tracking-wider flex items-center justify-between">
+                            <span>RETRIEVER CALL:</span>
+                            <span className="bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider">
+                              Mode: {report.developer_insight?.retriever_type || "hybrid"}
+                            </span>
+                          </span>
                           <div className="bg-slate-900/60 p-3 rounded-lg border border-white/10 text-xs font-mono text-indigo-300">
-                            retrieve_context_advanced(query, persist_dir, limit)
+                            {`retrieve_context(query, persist_dir, limit, retriever_type="${report.developer_insight?.retriever_type || "hybrid"}")`}
                           </div>
                         </div>
                         <div className="flex flex-col gap-2">

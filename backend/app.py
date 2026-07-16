@@ -298,7 +298,8 @@ def review_game(request: ReviewRequest):
         rag_queries=rag_queries,
         rag_context=rag_context,
         raw_prompt=system_prompt,
-        stockfish_raw=analyses
+        stockfish_raw=analyses,
+        retriever_type=request.retriever_type or "hybrid"
     )
     
     return CoachReport(
@@ -382,7 +383,8 @@ def chat_message(request: ChatRequest):
         rag_queries=rag_queries,
         rag_context=rag_context,
         raw_prompt=raw_prompt,
-        stockfish_raw=analyses
+        stockfish_raw=analyses,
+        retriever_type=current_state.values.get("retriever_type") or "hybrid"
     )
     
     return {

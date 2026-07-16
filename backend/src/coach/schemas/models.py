@@ -68,6 +68,7 @@ class DeveloperInsight(BaseModel):
     rag_context: str = ""
     raw_prompt: str = ""
     stockfish_raw: List[MoveAnalysis] = []
+    retriever_type: str = "hybrid"
 
 class CoachReport(BaseModel):
     username: str
