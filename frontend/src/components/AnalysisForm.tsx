@@ -1,0 +1,195 @@
+import React from "react";
+import { Search, User, Sparkles, RefreshCw, ShieldAlert } from "lucide-react";
+import type { Source } from "../lib/api";
+
+interface AnalysisFormProps {
+  username: string;
+  setUsername: (u: string) => void;
+  source: Source;
+  setSource: (s: Source) => void;
+  pgn: string;
+  setPgn: (p: string) => void;
+  activeTab: "fetch" | "paste";
+  setActiveTab: (t: "fetch" | "paste") => void;
+  retrieverType: "hybrid" | "dense" | "sparse";
+  setRetrieverType: (r: "hybrid" | "dense" | "sparse") => void;
+  isAnalyzing: boolean;
+  error: string | null;
+  onSubmit: (e: React.FormEvent) => void;
+}
+
+export function AnalysisForm({
+  username,
+  setUsername,
+  source,
+  setSource,
+  pgn,
+  setPgn,
+  activeTab,
+  setActiveTab,
+  retrieverType,
+  setRetrieverType,
+  isAnalyzing,
+  error,
+  onSubmit
+}: AnalysisFormProps) {
+  return (
+    <section className="glass-panel rounded-2xl p-6 md:p-8 flex flex-col gap-6 shadow-xl relative overflow-hidden">
+      <div className="absolute top-0 right-0 w-80 h-80 bg-sky-500/5 rounded-full filter blur-[80px] -z-10"></div>
+      <div>
+        <h2 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
+          <Sparkles className="w-6 h-6 text-sky-400" /> Start Your Analysis
+        </h2>
+        <p className="text-sm text-slate-400 mt-1">Submit your chess matches to receive Stockfish-powered tactical breakdowns and RAG-driven opening insights.</p>
+      </div>
+
+      <div className="flex border-b border-white/5 gap-4">
+        <button
+          onClick={() => setActiveTab("fetch")}
+          className={`pb-3 text-sm font-semibold relative transition-all ${
+            activeTab === "fetch" ? "text-sky-400 border-b-2 border-sky-400" : "text-slate-400 hover:text-slate-200"
+          }`}
+        >
+          Fetch from Platform
+        </button>
+        <button
+          onClick={() => setActiveTab("paste")}
+          className={`pb-3 text-sm font-semibold relative transition-all ${
+            activeTab === "paste" ? "text-sky-400 border-b-2 border-sky-400" : "text-slate-400 hover:text-slate-200"
+          }`}
+        >
+          Upload / Paste PGN
+        </button>
+      </div>
+
+      <form onSubmit={onSubmit} className="flex flex-col gap-4">
+        {activeTab === "fetch" ? (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="flex flex-col gap-2">
+              <label className="text-xs font-semibold text-slate-400 tracking-wider">CHESS PLATFORM</label>
+              <select
+                value={source}
+                onChange={(e) => setSource(e.target.value as Source)}
+                className="bg-slate-900/60 border border-white/10 rounded-lg p-3 text-sm focus:border-sky-400 focus:outline-none"
+              >
+                <option value="lichess">Lichess.org</option>
+                <option value="chesscom">Chess.com</option>
+              </select>
+            </div>
+            <div className="flex flex-col gap-2 md:col-span-2">
+              <label className="text-xs font-semibold text-slate-400 tracking-wider">USERNAME</label>
+              <div className="relative">
+                <User className="absolute left-3.5 top-3.5 w-4 h-4 text-slate-500" />
+                <input
+                  type="text"
+                  placeholder="e.g. magnus, drnykterstein"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  className="w-full bg-slate-900/60 border border-white/10 rounded-lg p-3 pl-10 text-sm focus:border-sky-400 focus:outline-none"
+                />
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-2">
+            <label className="text-xs font-semibold text-slate-400 tracking-wider">PGN GAME DATA</label>
+            <textarea
+              rows={5}
+              placeholder="Paste standard PGN format block..."
+              value={pgn}
+              onChange={(e) => setPgn(e.target.value)}
+              className="bg-slate-900/60 border border-white/10 rounded-lg p-3 text-sm font-mono focus:border-sky-400 focus:outline-none resize-none"
+            />
+          </div>
+        )}
+
+        {/* Quick Select Sample Players */}
+        {activeTab === "fetch" && (
+          <div className="flex flex-col gap-2 border-t border-white/5 pt-4">
+            <label className="text-[10px] font-bold text-slate-500 tracking-wider uppercase">Quick Select Active Profiles</label>
+            <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto pr-2">
+              {[
+                { username: "Arkadiy_Khromaev", label: "Arkadiy_Khromaev (Yearly H)" },
+                { username: "Kurald_Galain", label: "Kurald_Galain (Yearly Bullet)" },
+                { username: "celvic", label: "celvic (Weekly Blitz)" },
+                { username: "nguyenmanhduc_2x", label: "CM nguyenmanhduc_2x (Yearly Rapid)" },
+                { username: "GlasnostPerestroika", label: "GlasnostPerestroika (Spring)" },
+                { username: "bzdybowicz", label: "bzdybowicz (Yearly)" },
+                { username: "Master-06", label: "Master-06 (Yearly)" },
+                { username: "alexa0112358", label: "alexa0112358 (Weekly)" },
+                { username: "Surgut_Challenger", label: "Surgut_Challenger" },
+                { username: "Tetiksh1Agrawal", label: "Tetiksh1Agrawal" },
+                { username: "maxwellssilvrhaMMer", label: "maxwellssilvrhaMMer" }
+              ].map((player) => (
+                <button
+                  key={player.username}
+                  type="button"
+                  onClick={() => {
+                    setUsername(player.username);
+                    setSource("lichess");
+                  }}
+                  className={`text-[10px] px-2.5 py-1 rounded-md border transition-all ${
+                    username === player.username
+                      ? "bg-sky-500/20 border-sky-400 text-sky-300 font-bold"
+                      : "bg-slate-900/40 border-white/5 text-slate-400 hover:text-slate-200 hover:bg-slate-800"
+                  }`}
+                >
+                  {player.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Retriever Strategy Selection Row */}
+        <div className="flex flex-col gap-2 border-t border-white/5 pt-4">
+          <label className="text-xs font-semibold text-slate-400 tracking-wider">RETRIEVER STRATEGY</label>
+          <div className="flex flex-wrap gap-2">
+            {[
+              { id: "hybrid", label: "Fused Hybrid (RRF)", desc: "Best of both: Vector + Keyword" },
+              { id: "dense", label: "Semantic Search", desc: "Embeddings only" },
+              { id: "sparse", label: "Keyword (BM25)", desc: "Exact query matches" }
+            ].map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => setRetrieverType(item.id as any)}
+                className={`flex-1 min-w-[200px] text-left p-3 rounded-lg border text-xs transition-all ${
+                  retrieverType === item.id 
+                    ? "bg-sky-500/10 border-sky-400 text-sky-300 shadow-lg shadow-sky-500/5" 
+                    : "bg-slate-900/60 border-white/10 text-slate-400 hover:text-slate-300"
+                }`}
+              >
+                <strong className="block font-bold text-slate-200 mb-0.5">{item.label}</strong>
+                <span>{item.desc}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <button
+          type="submit"
+          disabled={isAnalyzing}
+          className="w-full md:w-auto self-end bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 text-white font-semibold py-3 px-6 rounded-lg text-sm flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+        >
+          {isAnalyzing ? (
+            <>
+              <RefreshCw className="w-4 h-4 animate-spin" /> Analyzing match data...
+            </>
+          ) : (
+            <>
+              <Search className="w-4 h-4" /> Run Analysis Report
+            </>
+          )}
+        </button>
+      </form>
+
+      {error && (
+        <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-sm p-4 rounded-lg flex items-start gap-3">
+          <ShieldAlert className="w-5 h-5 flex-shrink-0 mt-0.5" />
+          <span>{error}</span>
+        </div>
+      )}
+    </section>
+  );
+}

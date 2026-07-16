@@ -1,24 +1,12 @@
 import React, { useState, useEffect, useRef } from "react";
-import { 
-  Search, 
-  BookOpen, 
-  MessageSquare, 
-  Send, 
-  ExternalLink, 
-  ShieldAlert, 
-  Flame, 
-  Target, 
-  TrendingDown, 
-  CheckCircle,
-  HelpCircle,
-  User,
-  Sparkles,
-  RefreshCw,
-  Terminal,
-  Activity
-} from "lucide-react";
 import { reviewGame, chatMessage } from "./lib/api";
-import type { CoachReport, Severity, Source } from "./lib/api";
+import type { CoachReport, Source } from "./lib/api";
+import { Header } from "./components/Header";
+import { AnalysisForm } from "./components/AnalysisForm";
+import { CoachSummary } from "./components/CoachSummary";
+import { MoveBreakdown } from "./components/MoveBreakdown";
+import { DevInsights } from "./components/DevInsights";
+import { ChatPanel } from "./components/ChatPanel";
 
 export default function App() {
   // Session ID generation for conversational memory
@@ -121,196 +109,30 @@ export default function App() {
     }
   };
 
-  // Helper to color-code move severity labels
-  const getSeverityColor = (label: Severity) => {
-    switch (label) {
-      case "blunder": return "bg-red-500/20 text-red-400 border border-red-500/30";
-      case "mistake": return "bg-amber-500/20 text-amber-400 border border-amber-500/30";
-      case "inaccuracy": return "bg-yellow-500/10 text-yellow-400 border border-yellow-500/20";
-      default: return "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30";
-    }
-  };
-
   return (
     <div className="min-h-screen bg-[#060814] text-slate-100 flex flex-col">
       {/* Top Navigation Header */}
-      <header className="glass-panel sticky top-0 z-50 border-b border-white/5 py-4 px-6 md:px-12 flex justify-between items-center">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-sky-400 to-indigo-600 flex items-center justify-center shadow-lg shadow-sky-500/20">
-            <Flame className="w-6 h-6 text-white" />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold tracking-tight bg-gradient-to-r from-sky-400 via-indigo-200 to-white bg-clip-text text-transparent">
-              GRANDMATE
-            </h1>
-            <p className="text-xs text-slate-500 font-medium tracking-wide">AI CHESS COACHING SYSTEM</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-3 text-xs bg-slate-900/60 border border-white/5 px-3 py-1.5 rounded-lg text-slate-400">
-          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-          FastAPI Connected
-        </div>
-      </header>
+      <Header />
 
       {/* Main Container */}
       <main className="flex-1 max-w-7xl w-full mx-auto p-6 md:p-10 flex flex-col gap-10">
         
         {/* Step 1: Input Area */}
-        <section className="glass-panel rounded-2xl p-6 md:p-8 flex flex-col gap-6 shadow-xl relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-80 h-80 bg-sky-500/5 rounded-full filter blur-[80px] -z-10"></div>
-          <div>
-            <h2 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
-              <Sparkles className="w-6 h-6 text-sky-400" /> Start Your Analysis
-            </h2>
-            <p className="text-sm text-slate-400 mt-1">Submit your chess matches to receiveStockfish-powered tactical breakdowns and RAG-driven opening insights.</p>
-          </div>
-
-          <div className="flex border-b border-white/5 gap-4">
-            <button
-              onClick={() => setActiveTab("fetch")}
-              className={`pb-3 text-sm font-semibold relative transition-all ${
-                activeTab === "fetch" ? "text-sky-400 border-b-2 border-sky-400" : "text-slate-400 hover:text-slate-200"
-              }`}
-            >
-              Fetch from Platform
-            </button>
-            <button
-              onClick={() => setActiveTab("paste")}
-              className={`pb-3 text-sm font-semibold relative transition-all ${
-                activeTab === "paste" ? "text-sky-400 border-b-2 border-sky-400" : "text-slate-400 hover:text-slate-200"
-              }`}
-            >
-              Upload / Paste PGN
-            </button>
-          </div>
-
-          <form onSubmit={handleAnalyze} className="flex flex-col gap-4">
-            {activeTab === "fetch" ? (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="flex flex-col gap-2">
-                  <label className="text-xs font-semibold text-slate-400 tracking-wider">CHESS PLATFORM</label>
-                  <select
-                    value={source}
-                    onChange={(e) => setSource(e.target.value as Source)}
-                    className="bg-slate-900/60 border border-white/10 rounded-lg p-3 text-sm focus:border-sky-400 focus:outline-none"
-                  >
-                    <option value="lichess">Lichess.org</option>
-                    <option value="chesscom">Chess.com</option>
-                  </select>
-                </div>
-                <div className="flex flex-col gap-2 md:col-span-2">
-                  <label className="text-xs font-semibold text-slate-400 tracking-wider">USERNAME</label>
-                  <div className="relative">
-                    <User className="absolute left-3.5 top-3.5 w-4 h-4 text-slate-500" />
-                    <input
-                      type="text"
-                      placeholder="e.g. magnus, drnykterstein"
-                      value={username}
-                      onChange={(e) => setUsername(e.target.value)}
-                      className="w-full bg-slate-900/60 border border-white/10 rounded-lg p-3 pl-10 text-sm focus:border-sky-400 focus:outline-none"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Quick Select Sample Players */}
-              <div className="flex flex-col gap-2 border-t border-white/5 pt-4">
-                <label className="text-[10px] font-bold text-slate-500 tracking-wider uppercase">Quick Select Active Profiles</label>
-                <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto pr-2">
-                  {[
-                    { username: "Arkadiy_Khromaev", label: "Arkadiy_Khromaev (Yearly H)" },
-                    { username: "Kurald_Galain", label: "Kurald_Galain (Yearly Bullet)" },
-                    { username: "celvic", label: "celvic (Weekly Blitz)" },
-                    { username: "nguyenmanhduc_2x", label: "CM nguyenmanhduc_2x (Yearly Rapid)" },
-                    { username: "GlasnostPerestroika", label: "GlasnostPerestroika (Spring)" },
-                    { username: "bzdybowicz", label: "bzdybowicz (Yearly)" },
-                    { username: "Master-06", label: "Master-06 (Yearly)" },
-                    { username: "alexa0112358", label: "alexa0112358 (Weekly)" },
-                    { username: "Surgut_Challenger", label: "Surgut_Challenger" },
-                    { username: "Tetiksh1Agrawal", label: "Tetiksh1Agrawal" },
-                    { username: "maxwellssilvrhaMMer", label: "maxwellssilvrhaMMer" }
-                  ].map((player) => (
-                    <button
-                      key={player.username}
-                      type="button"
-                      onClick={() => {
-                        setUsername(player.username);
-                        setSource("lichess");
-                      }}
-                      className={`text-[10px] px-2.5 py-1 rounded-md border transition-all ${
-                        username === player.username
-                          ? "bg-sky-500/20 border-sky-400 text-sky-300 font-bold"
-                          : "bg-slate-900/40 border-white/5 text-slate-400 hover:text-slate-200 hover:bg-slate-800"
-                      }`}
-                    >
-                      {player.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ) : (
-              <div className="flex flex-col gap-2">
-                <label className="text-xs font-semibold text-slate-400 tracking-wider">PGN GAME DATA</label>
-                <textarea
-                  rows={5}
-                  placeholder="Paste standard PGN format block..."
-                  value={pgn}
-                  onChange={(e) => setPgn(e.target.value)}
-                  className="bg-slate-900/60 border border-white/10 rounded-lg p-3 text-sm font-mono focus:border-sky-400 focus:outline-none resize-none"
-                />
-              </div>
-            )}
-
-            {/* Retriever Strategy Selection Row */}
-            <div className="flex flex-col gap-2 border-t border-white/5 pt-4">
-              <label className="text-xs font-semibold text-slate-400 tracking-wider">RETRIEVER STRATEGY</label>
-              <div className="flex flex-wrap gap-2">
-                {[
-                  { id: "hybrid", label: "Fused Hybrid (RRF)", desc: "Best of both: Vector + Keyword" },
-                  { id: "dense", label: "Semantic Search", desc: "Embeddings only" },
-                  { id: "sparse", label: "Keyword (BM25)", desc: "Exact query matches" }
-                ].map((item) => (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => setRetrieverType(item.id as any)}
-                    className={`flex-1 min-w-[200px] text-left p-3 rounded-lg border text-xs transition-all ${
-                      retrieverType === item.id 
-                        ? "bg-sky-500/10 border-sky-400 text-sky-300 shadow-lg shadow-sky-500/5" 
-                        : "bg-slate-900/60 border-white/10 text-slate-400 hover:text-slate-300"
-                    }`}
-                  >
-                    <strong className="block font-bold text-slate-200 mb-0.5">{item.label}</strong>
-                    <span>{item.desc}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              disabled={isAnalyzing}
-              className="w-full md:w-auto self-end bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 text-white font-semibold py-3 px-6 rounded-lg text-sm flex items-center justify-center gap-2 transition-all disabled:opacity-50"
-            >
-              {isAnalyzing ? (
-                <>
-                  <RefreshCw className="w-4 h-4 animate-spin" /> Analyzing match data...
-                </>
-              ) : (
-                <>
-                  <Search className="w-4 h-4" /> Run Analysis Report
-                </>
-              )}
-            </button>
-          </form>
-
-          {error && (
-            <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-sm p-4 rounded-lg flex items-start gap-3">
-              <ShieldAlert className="w-5 h-5 flex-shrink-0 mt-0.5" />
-              <span>{error}</span>
-            </div>
-          )}
-        </section>
+        <AnalysisForm
+          username={username}
+          setUsername={setUsername}
+          source={source}
+          setSource={setSource}
+          pgn={pgn}
+          setPgn={setPgn}
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          retrieverType={retrieverType}
+          setRetrieverType={setRetrieverType}
+          isAnalyzing={isAnalyzing}
+          error={error}
+          onSubmit={handleAnalyze}
+        />
 
         {/* Step 2: Dashboard Content */}
         {report && (
@@ -319,366 +141,35 @@ export default function App() {
             <div className="lg:col-span-2 flex flex-col gap-10">
               
               {/* Metrics & Summary Card */}
-              <div className="glass-panel rounded-2xl p-6 md:p-8 flex flex-col gap-6 shadow-xl relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/5 rounded-full filter blur-[60px] -z-10"></div>
-                
-                {/* Meta Row */}
-                <div className="flex flex-wrap justify-between items-center gap-4 border-b border-white/5 pb-4">
-                  <div>
-                    <h3 className="text-xl font-bold tracking-tight text-white">{report.username}'s Coaching Summary</h3>
-                    <p className="text-xs text-slate-400 mt-0.5">Report generated with Stockfish depth 16 & local semantic RAG</p>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-3 text-sm">
-                    <span className="px-3 py-1 bg-slate-900 border border-white/5 rounded-md text-slate-400">
-                      Latency: <strong className="text-sky-400 font-bold">{report.latency_s}s</strong>
-                    </span>
-                    <span className="px-3 py-1 bg-slate-900 border border-white/5 rounded-md text-slate-400">
-                      Cost: <strong className="text-emerald-400 font-bold">${report.cost_usd.toFixed(4)}</strong>
-                    </span>
-                    <button
-                      onClick={() => setShowDevInsights(!showDevInsights)}
-                      className={`px-3 py-1 rounded-md text-xs font-semibold flex items-center gap-1.5 transition-all border ${
-                        showDevInsights 
-                          ? "bg-indigo-500/20 border-indigo-500/40 text-indigo-300 shadow-lg shadow-indigo-500/10"
-                          : "bg-slate-900 border-white/5 text-slate-400 hover:text-slate-200 hover:bg-slate-800"
-                      }`}
-                    >
-                      <Terminal className="w-3.5 h-3.5" />
-                      {showDevInsights ? "Hide Dev Insights" : "Dev Insights"}
-                    </button>
-                  </div>
-                </div>
-
-                {/* Coaching Narration Text */}
-                <div className="text-slate-300 leading-relaxed text-sm whitespace-pre-line border-l-2 border-sky-500 pl-4 py-1">
-                  {report.summary}
-                </div>
-              </div>
-
-              {/* Explain This Position */}
-              <div className="glass-panel rounded-2xl p-6 md:p-8 flex flex-col gap-4 shadow-xl">
-                <h4 className="text-lg font-bold tracking-tight text-white flex items-center gap-2">
-                  <Sparkles className="w-5 h-5 text-sky-400" /> Explain this position
-                </h4>
-                <ul className="list-disc pl-5 text-sm text-slate-300 space-y-2">
-                  {report.position_explanation?.length > 0 ? (
-                    report.position_explanation.map((item, index) => <li key={index}>{item}</li>)
-                  ) : (
-                    <li className="text-slate-500">No position explanation available yet.</li>
-                  )}
-                </ul>
-              </div>
-
-              {/* Weaknesses and Drills */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Weaknesses List */}
-                <div className="glass-panel rounded-xl p-6 flex flex-col gap-4 shadow-lg">
-                  <h4 className="text-lg font-bold tracking-tight text-white flex items-center gap-2">
-                    <TrendingDown className="w-5 h-5 text-rose-400" /> Focus Weaknesses
-                  </h4>
-                  {report.top_weaknesses.length > 0 ? (
-                    <div className="flex flex-col gap-4">
-                      {report.top_weaknesses.map((w, index) => (
-                        <div key={index} className="flex flex-col gap-1.5 bg-slate-900/40 p-3 rounded-lg border border-white/5">
-                          <div className="flex justify-between items-center">
-                            <span className="font-semibold text-sm text-slate-200">{w.theme}</span>
-                            <span className="text-xs text-rose-400 font-bold">{w.count} {w.count === 1 ? 'blunder' : 'blunders'}</span>
-                          </div>
-                          <div className="w-full bg-slate-950 rounded-full h-1.5 overflow-hidden">
-                            <div 
-                              className="bg-rose-500 h-full rounded-full" 
-                              style={{ width: `${Math.min(100, (w.count / 3) * 100)}%` }}
-                            />
-                          </div>
-                          <span className="text-[10px] text-slate-500">Occurrences at plies: {w.example_plies.join(", ")}</span>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-slate-500 text-sm italic">No significant tactical weaknesses detected. Great job!</p>
-                  )}
-                </div>
-
-                {/* Training Drills Card */}
-                <div className="glass-panel rounded-xl p-6 flex flex-col gap-4 shadow-lg">
-                  <h4 className="text-lg font-bold tracking-tight text-white flex items-center gap-2">
-                    <Target className="w-5 h-5 text-sky-400" /> Recommended Drills
-                  </h4>
-                  {report.drills.length > 0 ? (
-                    <div className="flex flex-col gap-3">
-                      {report.drills.map((d, index) => (
-                        <div key={index} className="flex items-center justify-between bg-slate-900/40 p-3 rounded-lg border border-white/5">
-                          <div>
-                            <span className="text-sm font-semibold text-slate-200 block">{d.theme} Practice</span>
-                            <span className="text-xs text-slate-500">Suggested rating level: {d.rating}</span>
-                          </div>
-                          <a
-                            href={d.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="bg-sky-500/10 hover:bg-sky-500/20 text-sky-400 hover:text-sky-300 p-2 rounded-lg transition-colors border border-sky-500/20"
-                          >
-                            <ExternalLink className="w-4 h-4" />
-                          </a>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-slate-500 text-sm italic">No custom drills required. Ready for tournament play!</p>
-                  )}
-                </div>
-              </div>
+              <CoachSummary
+                report={report}
+                showDevInsights={showDevInsights}
+                setShowDevInsights={setShowDevInsights}
+              />
 
               {/* Move Breakdown Table */}
-              <div className="glass-panel rounded-2xl p-6 md:p-8 flex flex-col gap-4 shadow-xl">
-                <h4 className="text-lg font-bold tracking-tight text-white flex items-center gap-2">
-                  <BookOpen className="w-5 h-5 text-indigo-400" /> Move-by-Move Analysis
-                </h4>
-                {report.findings.length > 0 ? (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left text-sm border-collapse">
-                      <thead>
-                        <tr className="border-b border-white/5 text-slate-500 font-semibold">
-                          <th className="py-3 px-4">Ply</th>
-                          <th className="py-3 px-4">Severity</th>
-                          <th className="py-3 px-4">Mistake Explanation</th>
-                          <th className="py-3 px-4 text-right">Action Plan</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {report.findings.map((f, index) => (
-                          <tr key={index} className="border-b border-white/5 hover:bg-slate-900/20 transition-all">
-                            <td className="py-4 px-4 font-mono font-semibold text-slate-400">#{f.ply}</td>
-                            <td className="py-4 px-4">
-                              <span className={`text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full ${getSeverityColor(f.label)}`}>
-                                {f.label}
-                              </span>
-                            </td>
-                            <td className="py-4 px-4 text-slate-200 leading-normal max-w-xs md:max-w-sm">
-                              {f.why}
-                            </td>
-                            <td className="py-4 px-4 text-right font-medium text-sky-400 max-w-xs">
-                              {f.correct_plan}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-3 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm p-4 rounded-lg">
-                    <CheckCircle className="w-5 h-5" />
-                    <span>No errors detected in this game! Exceptional play!</span>
-                  </div>
-                )}
-              </div>
+              <MoveBreakdown report={report} />
 
               {/* Developer Insights Panel */}
               {showDevInsights && report.developer_insight && (
-                <div className="glass-panel rounded-2xl p-6 md:p-8 flex flex-col gap-6 shadow-xl border border-indigo-500/20 bg-slate-950/40">
-                  <div className="flex flex-wrap justify-between items-center gap-4 border-b border-white/5 pb-4">
-                    <div>
-                      <h4 className="text-lg font-bold tracking-tight text-white flex items-center gap-2">
-                        <Terminal className="w-5 h-5 text-indigo-400" /> Graph Execution Inspector
-                      </h4>
-                      <p className="text-xs text-slate-500 mt-0.5">Real-time tracing of LangGraph nodes & pipeline states</p>
-                    </div>
-                    <div className="flex border border-white/5 bg-slate-900/60 p-1 rounded-lg gap-1">
-                      <button
-                        onClick={() => setActiveDevTab("engine")}
-                        className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-                          activeDevTab === "engine" ? "bg-indigo-500/20 text-indigo-300" : "text-slate-500 hover:text-slate-300"
-                        }`}
-                      >
-                        ♟️ Stockfish
-                      </button>
-                      <button
-                        onClick={() => setActiveDevTab("rag")}
-                        className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-                          activeDevTab === "rag" ? "bg-indigo-500/20 text-indigo-300" : "text-slate-500 hover:text-slate-300"
-                        }`}
-                      >
-                        🔍 RAG Store
-                      </button>
-                      <button
-                        onClick={() => setActiveDevTab("prompt")}
-                        className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-                          activeDevTab === "prompt" ? "bg-indigo-500/20 text-indigo-300" : "text-slate-500 hover:text-slate-300"
-                        }`}
-                      >
-                        🧠 LLM Prompt
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Graph Pipeline Step Visualizer */}
-                  <div className="flex flex-col gap-3 bg-slate-900/40 p-4 rounded-xl border border-white/5">
-                    <span className="text-[10px] uppercase font-bold tracking-wider text-indigo-400">LangGraph Active Path</span>
-                    <div className="flex flex-wrap items-center gap-2 md:gap-4 text-xs font-medium text-slate-300">
-                      <div className="flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 px-2.5 py-1 rounded-full">
-                        <CheckCircle className="w-3.5 h-3.5" /> fetch_and_analyse
-                      </div>
-                      <span className="text-slate-600">➔</span>
-                      <div className="flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 px-2.5 py-1 rounded-full">
-                        <CheckCircle className="w-3.5 h-3.5" /> retrieve_rag_context
-                      </div>
-                      <span className="text-slate-600">➔</span>
-                      <div className="flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 px-2.5 py-1 rounded-full">
-                        <CheckCircle className="w-3.5 h-3.5" /> narrator_agent
-                      </div>
-                      <span className="text-slate-600">➔</span>
-                      <div className="flex items-center gap-1.5 bg-indigo-500/20 border border-indigo-500/40 text-indigo-300 px-2.5 py-1 rounded-full">
-                        <Activity className="w-3.5 h-3.5 animate-pulse" /> {report.developer_insight.graph_state}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Tab Contents */}
-                  <div className="text-sm">
-                    {activeDevTab === "engine" && (
-                      <div className="flex flex-col gap-4">
-                        <div className="flex justify-between items-center bg-slate-900/20 p-3 rounded-lg border border-white/5">
-                          <span className="text-slate-400 text-xs">Stockfish Version: <strong className="text-slate-200">16 (Binary)</strong></span>
-                          <span className="text-slate-400 text-xs">Evaluated Nodes: <strong className="text-slate-200">{report.developer_insight.stockfish_raw.length} plies</strong></span>
-                        </div>
-                        <div className="overflow-x-auto border border-white/5 rounded-xl">
-                          <table className="w-full text-left text-xs border-collapse">
-                            <thead>
-                              <tr className="border-b border-white/5 bg-slate-900/40 text-slate-400 font-semibold">
-                                <th className="py-2.5 px-3">Ply</th>
-                                <th className="py-2.5 px-3">UCI Played</th>
-                                <th className="py-2.5 px-3">UCI Best</th>
-                                <th className="py-2.5 px-3">CPL</th>
-                                <th className="py-2.5 px-3">Eval Before</th>
-                                <th className="py-2.5 px-3">Eval After</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {report.developer_insight.stockfish_raw.map((item, idx) => (
-                                <tr key={idx} className="border-b border-white/5 hover:bg-slate-900/10">
-                                  <td className="py-3 px-3 font-mono text-slate-400">#{item.ply}</td>
-                                  <td className="py-3 px-3 font-mono text-slate-200">{item.played_uci}</td>
-                                  <td className="py-3 px-3 font-mono text-emerald-400">{item.best_uci}</td>
-                                  <td className="py-3 px-3 font-mono text-rose-400">{item.centipawn_loss}</td>
-                                  <td className="py-3 px-3 font-mono text-slate-400">{item.eval_before_cp}</td>
-                                  <td className="py-3 px-3 font-mono text-slate-400">{item.eval_after_cp}</td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
-                    )}
-
-                    {activeDevTab === "rag" && (
-                      <div className="flex flex-col gap-4">
-                        <div className="flex flex-col gap-2">
-                          <span className="text-xs font-semibold text-slate-400 tracking-wider flex items-center justify-between">
-                            <span>RETRIEVER CALL:</span>
-                            <span className="bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider">
-                              Mode: {report.developer_insight?.retriever_type || "hybrid"}
-                            </span>
-                          </span>
-                          <div className="bg-slate-900/60 p-3 rounded-lg border border-white/10 text-xs font-mono text-indigo-300">
-                            {`retrieve_context(query, persist_dir, limit, retriever_type="${report.developer_insight?.retriever_type || "hybrid"}")`}
-                          </div>
-                        </div>
-                        <div className="flex flex-col gap-2">
-                          <span className="text-xs font-semibold text-slate-400 tracking-wider">GENERATED RAG QUERIES:</span>
-                          <div className="flex flex-wrap gap-2">
-                            {report.developer_insight.rag_queries.map((q, idx) => (
-                              <span key={idx} className="bg-sky-500/10 border border-sky-500/20 text-sky-400 px-2.5 py-1 rounded-md text-xs font-semibold">
-                                "{q}"
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                        <div className="flex flex-col gap-2">
-                          <span className="text-xs font-semibold text-slate-400 tracking-wider">RETRIEVED CONTEXT (CHROMADB + BM25):</span>
-                          <div className="bg-slate-950 p-4 rounded-xl border border-white/5 max-h-60 overflow-y-auto text-xs font-mono text-slate-300 whitespace-pre-line leading-relaxed">
-                            {report.developer_insight.rag_context || "No RAG context retrieved for this match."}
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {activeDevTab === "prompt" && (
-                      <div className="flex flex-col gap-2">
-                        <span className="text-xs font-semibold text-slate-400 tracking-wider">AUGMENTED SYSTEM PROMPT (GEMINI INPUT):</span>
-                        <div className="bg-slate-950 p-4 rounded-xl border border-white/5 max-h-[350px] overflow-y-auto text-xs font-mono text-slate-300 whitespace-pre-wrap leading-relaxed">
-                          {report.developer_insight.raw_prompt}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
+                <DevInsights
+                  report={report}
+                  activeDevTab={activeDevTab}
+                  setActiveDevTab={setActiveDevTab}
+                />
               )}
 
             </div>
 
             {/* Right Column: Conversational AI Chat Panel */}
-            <div className="lg:col-span-1 flex flex-col h-[650px] glass-panel rounded-2xl overflow-hidden shadow-xl border border-white/5">
-              
-              {/* Panel Header */}
-              <div className="bg-slate-900/60 p-4 border-b border-white/5 flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-sky-500/10 flex items-center justify-center text-sky-400 border border-sky-500/20">
-                  <MessageSquare className="w-4 h-4" />
-                </div>
-                <div>
-                  <h4 className="font-bold text-sm text-white">Ask your Grandmate Coach</h4>
-                  <p className="text-[10px] text-slate-500">Conversational context holds thread history</p>
-                </div>
-              </div>
-
-              {/* Chat Messages Log */}
-              <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4 bg-slate-950/20">
-                {messages.length === 0 && (
-                  <div className="flex flex-col items-center justify-center h-full text-center p-6 gap-3">
-                    <HelpCircle className="w-8 h-8 text-slate-600" />
-                    <p className="text-xs text-slate-500 max-w-[200px]">Once a game is analyzed, ask follow-up questions here!</p>
-                  </div>
-                )}
-                {messages.map((m, index) => (
-                  <div
-                    key={index}
-                    className={`flex flex-col max-w-[85%] rounded-2xl p-3.5 text-sm leading-relaxed ${
-                      m.sender === "user"
-                        ? "self-end bg-gradient-to-r from-sky-500 to-indigo-600 text-white rounded-br-none"
-                        : "self-start bg-slate-900 border border-white/5 text-slate-300 rounded-bl-none"
-                    }`}
-                  >
-                    <span>{m.text}</span>
-                  </div>
-                ))}
-                {isSendingChat && (
-                  <div className="self-start bg-slate-900 border border-white/5 text-slate-400 rounded-2xl rounded-bl-none p-3.5 text-sm flex items-center gap-2">
-                    <RefreshCw className="w-4 h-4 animate-spin text-sky-400" />
-                    <span>Coach is thinking...</span>
-                  </div>
-                )}
-                <div ref={chatEndRef} />
-              </div>
-
-              {/* Chat Input Area */}
-              <form onSubmit={handleSendChat} className="p-4 border-t border-white/5 bg-slate-950/40 flex gap-2">
-                <input
-                  type="text"
-                  placeholder="Ask about mistakes, lines, or drills..."
-                  value={chatInput}
-                  onChange={(e) => setChatInput(e.target.value)}
-                  disabled={messages.length === 0 || isSendingChat}
-                  className="flex-1 bg-slate-900/60 border border-white/10 rounded-lg px-3 py-2 text-sm focus:border-sky-400 focus:outline-none disabled:opacity-50 text-slate-100"
-                />
-                <button
-                  type="submit"
-                  disabled={messages.length === 0 || isSendingChat || !chatInput.trim()}
-                  className="bg-sky-500 hover:bg-sky-400 disabled:opacity-50 text-white p-2.5 rounded-lg transition-colors flex items-center justify-center"
-                >
-                  <Send className="w-4 h-4" />
-                </button>
-              </form>
-
-            </div>
+            <ChatPanel
+              messages={messages}
+              chatInput={chatInput}
+              setChatInput={setChatInput}
+              isSendingChat={isSendingChat}
+              onSubmit={handleSendChat}
+              chatEndRef={chatEndRef}
+            />
 
           </div>
         )}
