@@ -9,7 +9,9 @@ This document presents the final self-assessment and evidence references for the
 
 ---
 
-## Phased Rubric Assessment| Task | Rubric Deliverable | Max Points | Self-Score | Status | Evidence / Comments |
+## Phased Rubric Assessment
+
+| Task | Rubric Deliverable | Max Points | Self-Score | Status | Evidence / Comments |
 | :--- | :--- | :---: | :---: | :---: | :--- |
 | **Task 1** | **Defining Problem, Audience, and Scope** | **9** | **9 / 9** | ✅ Pass | Mapped in [Deliverables.md](./Deliverables.md#L7) |
 | 1.1 | Succinct 1-sentence description of the problem. | 1 | 1 / 1 | ✅ Pass | *Section 1.1:* Amateur chess players lack explainable plans for why moves are blunders. |
