@@ -50,7 +50,7 @@ export function AnalysisForm({
               type="submit"
               form="analysis-form"
               disabled={isAnalyzing}
-              className={`px-3 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all border shrink-0 ${
+              className={`px-5 py-2.5 rounded-lg text-sm font-semibold flex items-center gap-2 transition-all border shrink-0 ${
                 isAnalyzing 
                   ? "bg-slate-800 text-slate-500 border-white/5 cursor-not-allowed" 
                   : "bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 text-white border-transparent shadow-lg shadow-sky-500/20 active:scale-[0.98]"
@@ -58,12 +58,12 @@ export function AnalysisForm({
             >
               {isAnalyzing ? (
                 <>
-                  <RefreshCw className="w-3 h-3 animate-spin" />
+                  <RefreshCw className="w-4 h-4 animate-spin" />
                   <span>Analyzing...</span>
                 </>
               ) : (
                 <>
-                  <Search className="w-3.5 h-3.5" />
+                  <Search className="w-4 h-4" />
                   <span>Run Analysis</span>
                 </>
               )}
