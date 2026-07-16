@@ -1,6 +1,6 @@
 import chess
 import logging
-from typing import List
+from typing import List, Optional
 from config.settings import Settings
 from coach.schemas.models import Game, MoveAnalysis
 from coach.ingestion.pgn import iter_positions
@@ -24,6 +24,36 @@ def get_pv_san(board: chess.Board, pv_uci: List[str]) -> List[str]:
         except Exception:
             break
     return pv_san
+
+
+def _is_user_turn(board_before: chess.Board, user_color_is_white: bool) -> bool:
+    """Helper to check if it is the user's turn to move."""
+    return board_before.turn == chess.WHITE if user_color_is_white else board_before.turn == chess.BLACK
+
+
+def _get_move_san(board: chess.Board, move: chess.Move, fallback_uci: str) -> str:
+    """Safely converts a chess Move to SAN notation, falling back to UCI on error."""
+    try:
+        return board.san(move)
+    except Exception:
+        return fallback_uci
+
+
+def _classify_tactical_theme(board_before: chess.Board, board_after: chess.Board, ply: int, move: chess.Move, label: str) -> Optional[str]:
+    """Identifies the tactical theme associated with a mistake or blunder."""
+    if label == "ok":
+        return None
+        
+    # Check for Pin / Opening / Endgame on the starting board state
+    theme = classify_theme(board_before, ply, move.from_square)
+    
+    # If generic 'Tactics' was returned, check if the resulting move checked the opponent
+    if theme == "Tactics":
+        theme_after = classify_theme(board_after, ply, move.to_square)
+        if theme_after == "Check":
+            return "Check"
+            
+    return theme
 
 
 def analyze_game(game: Game, settings: Settings) -> List[MoveAnalysis]:
@@ -57,9 +87,8 @@ def analyze_game(game: Game, settings: Settings) -> List[MoveAnalysis]:
             return eval_result.model_dump()
 
         for ply, board_before, move in iter_positions(game):
-            # Determine if this is a user move
-            is_user_turn = board_before.turn == chess.WHITE if user_color_is_white else board_before.turn == chess.BLACK
-            if not is_user_turn:
+            # Check if this is the user's move
+            if not _is_user_turn(board_before, user_color_is_white):
                 continue
                 
             played_uci = move.uci()
@@ -68,36 +97,26 @@ def analyze_game(game: Game, settings: Settings) -> List[MoveAnalysis]:
             # Get engine evaluation of the position before the move
             eval_before = get_eval(fen_before)
             best_uci = eval_before.get("best_uci", "")
-            best_san = ""
-            if best_uci:
-                try:
-                    best_san = board_before.san(chess.Move.from_uci(best_uci))
-                except Exception:
-                    best_san = best_uci
-                    
-            played_san = ""
-            try:
-                played_san = board_before.san(move)
-            except Exception:
-                played_san = played_uci
+            
+            # Formats SAN moves
+            best_san = _get_move_san(board_before, chess.Move.from_uci(best_uci) if best_uci else chess.Move.null(), best_uci)
+            played_san = _get_move_san(board_before, move, played_uci)
                 
-            # Optimization: if played move is the best move
+            # Evaluate the position after the played move
+            board_after = board_before.copy()
+            board_after.push(move)
+            
             if played_uci == best_uci:
+                # Played best move
                 cpl = 0
                 label = "ok"
                 theme = None
                 eval_after_cp = eval_before.get("score_cp", 0)
-                pv_san = get_pv_san(board_before, eval_before.get("pv_uci", []))
             else:
-                # Player played a different move, evaluate the position after
-                board_after = board_before.copy()
-                board_after.push(move)
-                fen_after = board_after.fen()
-                
-                eval_after = get_eval(fen_after)
+                # Played a different move, calculate centipawn loss and class
+                eval_after = get_eval(board_after.fen())
                 eval_after_cp = eval_after.get("score_cp", 0)
                 
-                # Calculate CPL and assign label
                 cpl, label = calculate_cpl_and_label(
                     best_uci=best_uci,
                     played_uci=played_uci,
@@ -105,21 +124,11 @@ def analyze_game(game: Game, settings: Settings) -> List[MoveAnalysis]:
                     score_after=eval_after_cp,
                     settings=settings
                 )
+                theme = _classify_tactical_theme(board_before, board_after, ply, move, label)
                 
-                # Classify theme if it's a mistake
-                theme = None
-                if label != "ok":
-                    # Check for Pin / Opening / Endgame on board_before
-                    theme = classify_theme(board_before, ply, move.from_square)
-                    # If no tactical theme was detected, check if the resulting move put opponent in check
-                    if theme == "Tactics":
-                        theme_after = classify_theme(board_after, ply, move.to_square)
-                        if theme_after == "Check":
-                            theme = "Check"
-                
-                pv_san = get_pv_san(board_before, eval_before.get("pv_uci", []))
-                
-            # Append analysis
+            pv_san = get_pv_san(board_before, eval_before.get("pv_uci", []))
+            
+            # Append analysis record
             analyses.append(
                 MoveAnalysis(
                     ply=ply,
