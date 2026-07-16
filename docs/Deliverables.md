@@ -245,9 +245,23 @@ The table below compares the naive dense vector retriever against the Hybrid RRF
 ## 7. Future Reflections
 
 * **What to Keep:** The stateful graph orchestration (LangGraph), the deterministic validation suite (python-chess checkmate and legality check), and the persistent user learner profile.
-* **Reference Documentation:**
-  * For the core project requirements, scope definitions, and data source justifications, refer to [CAPSTONE_BRIEF.md](../final_docs/CAPSTONE_BRIEF.md).
-  * For comprehensive developer setup guides, API design patterns, and optimization records, refer to [my-notes.md](../final_docs/my-notes.md).
+
+### 7.1 Commercial Vision & Product Opportunities
+Grandmate shifts the chess tech market from a simple "post-game utility" into a valuable educational and competitive platform:
+* **The "Magnus Translator" (Spectator Value):** Translates complex computer lines into plain-English strategic plans (e.g., *"White played a3 to stop Black's knight from occupying b4 and taking control of the queenside"*), resolving the issue of raw engine numbers.
+* **The Coaching & Parenting Platform (B2B / Multi-User Value):** Tracks player histories over months in a learner profile database to highlight weaknesses (e.g., *"Johnny plays openings well, but has a 45% blunder rate in King and Pawn endgames"*), helping coaches manage 20-30 students.
+* **Opponent Scouting (Competitive Edge):** Scans an opponent's recent games and suggests targeted prep plans (e.g., *"Your opponent struggles against the Winawer variation; open with 1.e4"*).
+
+### 7.2 LLM Cost Economics & Hosting Strategy
+To minimize execution costs while maintaining accuracy, the system is designed around specific economic tiers:
+* **Cloud APIs (Gemini 1.5 Flash):** Highly cost-effective at $0.075 / million input tokens and $0.30 / million output tokens. The cost per game review is extremely low at ~$0.0004 USD, meaning zero idle costs.
+* **Self-Hosted GPU (Llama 3 8B):** Costs ~$0.50 to $1.20 per hour on GPU clouds. Break-even requires >1.5M reviews/month to be cheaper than Gemini APIs.
+* **Local Fine-Tuning Roadmap:** Host smaller models (e.g., Llama 3.2 3B or Qwen 1.5B) on cheap CPU servers ($5-$10/month) after gathering the first 5,000 high-quality reviews for training data.
+
+### 7.3 Active Tools vs. Scaling Architecture
+The prototype isolates local tools (Stockfish, python-chess) to ensure speed and 0% move hallucination rate. Production scaling incorporates external resources:
+* **Lichess Opening Explorer:** Queries move frequency and win/loss ratios to ground opening strategy advice.
+* **Tavily Web Search:** Resolves non-board queries (e.g., historical players, tournaments) using semantic web searches to prevent factual hallucinations.
 
 ---
 
