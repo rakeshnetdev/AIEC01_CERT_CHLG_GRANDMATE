@@ -103,6 +103,12 @@ export default function App() {
         session_id: sessionId
       });
       setMessages((prev) => [...prev, { sender: "ai", text: res.reply }]);
+      if (res.developer_insight && report) {
+        setReport({
+          ...report,
+          developer_insight: res.developer_insight
+        });
+      }
     } catch (err: any) {
       console.error(err);
       setMessages((prev) => [

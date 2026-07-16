@@ -291,4 +291,76 @@ def chat_message(request: ChatRequest):
     if not is_safe_output(reply):
         reply = "I cannot continue this specific conversation topic. Let's focus on chess strategies and analysis."
         
-    return {"reply": reply}
+    # Reconstruct developer insights for active chat turn
+    game = final_state.get("game")
+    analyses = final_state.get("analyses", [])
+    rag_context = final_state.get("rag_context", "")
+    
+    from coach.agent.prompts import NARRATOR_SYSTEM_PROMPT
+    summary_lines = []
+    for ma in analyses:
+        ma_dict = ma if isinstance(ma, dict) else ma.model_dump()
+        summary_lines.append(
+            f"- Ply {ma_dict.get('ply')} ({ma_dict.get('played_san')} played, best was {ma_dict.get('best_san')}). "
+            f"Loss: {ma_dict.get('centipawn_loss')}. Severity: {ma_dict.get('label')}. Theme: {ma_dict.get('theme') or 'None'}."
+        )
+    move_analyses_summary = "\n".join(summary_lines)
+    
+    white_player = "White"
+    black_player = "Black"
+    user_color = "white"
+    opening_name = "Unknown Opening"
+    result = "*"
+    if game:
+        game_dict = game if isinstance(game, dict) else game.model_dump()
+        white_player = game_dict.get("white", "White")
+        black_player = game_dict.get("black", "Black")
+        user_color = game_dict.get("user_color", "white")
+        opening_name = game_dict.get("opening_name") or "Unknown Opening"
+        result = game_dict.get("result", "*")
+
+    system_prompt = NARRATOR_SYSTEM_PROMPT.format(
+        white_player=white_player,
+        black_player=black_player,
+        user_color=user_color,
+        opening_name=opening_name,
+        result=result,
+        move_analyses_summary=move_analyses_summary,
+        rag_context=rag_context
+    )
+    
+    # Format message history as raw prompt context
+    history_str = []
+    for m in messages:
+        sender = "User" if isinstance(m, HumanMessage) else "Assistant"
+        history_str.append(f"{sender}: {m.content}")
+    raw_prompt = f"--- System Prompt ---\n{system_prompt}\n\n--- Conversation History ---\n" + "\n".join(history_str)
+    
+    from coach.schemas.models import DeveloperInsight, MoveAnalysis
+    processed_analyses = []
+    for ma in analyses:
+        if isinstance(ma, dict):
+            processed_analyses.append(MoveAnalysis(**ma))
+        else:
+            processed_analyses.append(ma)
+            
+    rag_queries = []
+    if opening_name != "Unknown Opening":
+        rag_queries.append(opening_name)
+    for ma in processed_analyses:
+        if ma.label != "ok" and ma.theme:
+            rag_queries.append(ma.theme)
+            
+    dev_insight = DeveloperInsight(
+        graph_state="finished (chat follow-up)",
+        active_nodes=["narrator_agent"],
+        rag_queries=rag_queries,
+        rag_context=rag_context,
+        raw_prompt=raw_prompt,
+        stockfish_raw=processed_analyses
+    )
+
+    return {
+        "reply": reply,
+        "developer_insight": dev_insight
+    }

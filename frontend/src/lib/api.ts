@@ -94,6 +94,7 @@ export interface ChatRequest {
 
 export interface ChatResponse {
   reply: string;
+  developer_insight?: DeveloperInsight;
 }
 
 export async function chatMessage(request: ChatRequest): Promise<ChatResponse> {
