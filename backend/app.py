@@ -289,7 +289,8 @@ def review_game(request: ReviewRequest):
     rag_queries = [game.opening_name] if game.opening_name else []
     for ma in analyses:
         if ma.label != "ok" and ma.theme:
-            rag_queries.append(ma.theme)
+            if ma.theme.lower() not in ["tactics", "opening", "endgame", "check"]:
+                rag_queries.append(ma.theme)
             
     system_prompt = _build_system_prompt(game, analyses, rag_context)
     dev_insight = DeveloperInsight(
@@ -375,7 +376,8 @@ def chat_message(request: ChatRequest):
     rag_queries = [game.opening_name] if game.opening_name else []
     for ma in analyses:
         if ma.label != "ok" and ma.theme:
-            rag_queries.append(ma.theme)
+            if ma.theme.lower() not in ["tactics", "opening", "endgame", "check"]:
+                rag_queries.append(ma.theme)
             
     dev_insight = DeveloperInsight(
         graph_state="finished (chat follow-up)",
