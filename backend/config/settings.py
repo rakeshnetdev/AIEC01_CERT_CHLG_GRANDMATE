@@ -1,4 +1,5 @@
 import os
+import shutil
 from functools import lru_cache
 from typing import Optional
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -43,6 +44,12 @@ def get_settings() -> Settings:
         s = Settings(_env_file="backend/.env")
     else:
         s = Settings()
+
+    # Dynamic fallback for stockfish if the specified path does not exist
+    if not os.path.exists(s.stockfish_path):
+        system_stockfish = shutil.which("stockfish")
+        if system_stockfish:
+            s.stockfish_path = system_stockfish
 
     # Populate LangChain environment variables to enable automatic tracing in LangGraph/LangChain
     api_key = s.langchain_api_key or s.langsmith_api_key or os.environ.get("LANGSMITH_API_KEY") or os.environ.get("LANGCHAIN_API_KEY")

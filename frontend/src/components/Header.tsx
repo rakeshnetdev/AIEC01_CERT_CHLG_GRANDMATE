@@ -1,4 +1,3 @@
-import React from "react";
 import { Crown, Terminal, Sun, Moon } from "lucide-react";
 
 interface HeaderProps {

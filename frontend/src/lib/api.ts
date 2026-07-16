@@ -69,6 +69,8 @@ export interface CoachReport {
   latency_s: number;
   cost_usd: number;
   developer_insight?: DeveloperInsight;
+  game_status?: string;
+  game_result?: string;
 }
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:9392";
