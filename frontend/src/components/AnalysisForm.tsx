@@ -1,6 +1,6 @@
 import React from "react";
 import { Search, User, Sparkles, RefreshCw, ShieldAlert } from "lucide-react";
-import type { Source, PraggGame } from "../lib/api";
+import type { Source, CarlsenGame } from "../lib/api";
 
 interface AnalysisFormProps {
   username: string;
@@ -16,7 +16,7 @@ interface AnalysisFormProps {
   isAnalyzing: boolean;
   error: string | null;
   onSubmit: (e: React.FormEvent) => void;
-  praggGames: PraggGame[];
+  carlsenGames: CarlsenGame[];
 }
 
 export function AnalysisForm({
@@ -33,7 +33,7 @@ export function AnalysisForm({
   isAnalyzing,
   error,
   onSubmit,
-  praggGames
+  carlsenGames
 }: AnalysisFormProps) {
   return (
     <section className="glass-panel rounded-2xl p-4 md:p-5 flex flex-col gap-4 shadow-xl relative overflow-hidden">
@@ -159,9 +159,9 @@ export function AnalysisForm({
           </div>
         ) : (
           <div className="flex flex-col gap-4">
-            {praggGames && praggGames.length > 0 && (
+            {carlsenGames && carlsenGames.length > 0 && (
               <div className="flex flex-col gap-1.5">
-                <label className="text-[10px] font-bold text-slate-500 tracking-wider uppercase">Load Praggnanandhaa's Top Games</label>
+                <label className="text-[10px] font-bold text-slate-500 tracking-wider uppercase">Load Magnus Carlsen's Top Games</label>
                 <select
                   onChange={(e) => {
                     if (e.target.value) {
@@ -171,8 +171,8 @@ export function AnalysisForm({
                   className="w-full md:max-w-md bg-slate-900/60 border border-white/10 rounded-lg p-2 text-xs focus:border-sky-400 focus:outline-none text-slate-300"
                   defaultValue=""
                 >
-                  <option value="">-- Select a game from Praggnanandhaa.pgn --</option>
-                  {praggGames.map((game, idx) => (
+                  <option value="">-- Select a game from Carlsen.pgn --</option>
+                  {carlsenGames.map((game, idx) => (
                     <option key={idx} value={game.pgn} className="bg-slate-950 text-slate-100">
                       {game.label}
                     </option>

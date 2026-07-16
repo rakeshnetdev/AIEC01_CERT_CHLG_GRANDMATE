@@ -393,15 +393,15 @@ def chat_message(request: ChatRequest):
     }
 
 
-@app.get("/pragg-games")
-def get_pragg_games():
-    """Reads the first 6 games from Praggnanandhaa.pgn and returns their metadata and raw PGN text."""
-    pgn_path = "/Users/sriraki/Desktop/CodePractice/ai_practice/AE-CH/prj/grandmate/backend/data/corpus/Praggnanandhaa.pgn"
+@app.get("/carlsen-games")
+def get_carlsen_games():
+    """Reads the first 6 games from Carlsen.pgn and returns their metadata and raw PGN text."""
+    pgn_path = "/Users/sriraki/Desktop/CodePractice/ai_practice/AE-CH/prj/grandmate/backend/data/corpus/Carlsen.pgn"
     if not os.path.exists(pgn_path):
-        pgn_path = "data/corpus/Praggnanandhaa.pgn"
+        pgn_path = "data/corpus/Carlsen.pgn"
         
     if not os.path.exists(pgn_path):
-        logger.warning(f"Pragg PGN file not found at {pgn_path}")
+        logger.warning(f"Carlsen PGN file not found at {pgn_path}")
         return []
         
     games = []
@@ -426,7 +426,7 @@ def get_pragg_games():
                     "pgn": pgn_str
                 })
     except Exception as e:
-        logger.error(f"Error reading Praggnanandhaa.pgn: {e}")
+        logger.error(f"Error reading Carlsen.pgn: {e}")
         return []
             
     return games

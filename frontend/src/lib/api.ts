@@ -116,15 +116,15 @@ export async function chatMessage(request: ChatRequest): Promise<ChatResponse> {
   return response.json();
 }
 
-export interface PraggGame {
+export interface CarlsenGame {
   label: string;
   pgn: string;
 }
 
-export async function fetchPraggGames(): Promise<PraggGame[]> {
-  const response = await fetch(`${BACKEND_URL}/pragg-games`);
+export async function fetchCarlsenGames(): Promise<CarlsenGame[]> {
+  const response = await fetch(`${BACKEND_URL}/carlsen-games`);
   if (!response.ok) {
-    throw new Error("Failed to load Praggnanandhaa games.");
+    throw new Error("Failed to load Magnus Carlsen games.");
   }
   return response.json();
 }

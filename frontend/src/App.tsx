@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
-import { reviewGame, chatMessage, fetchPraggGames } from "./lib/api";
-import type { CoachReport, Source, PraggGame } from "./lib/api";
+import { reviewGame, chatMessage, fetchCarlsenGames } from "./lib/api";
+import type { CoachReport, Source, CarlsenGame } from "./lib/api";
 import { Header } from "./components/Header";
 import { AnalysisForm } from "./components/AnalysisForm";
 import { CoachSummary } from "./components/CoachSummary";
@@ -21,7 +21,7 @@ export default function App() {
   const [showDevInsights, setShowDevInsights] = useState(false);
   const [activeDevTab, setActiveDevTab] = useState<"engine" | "rag" | "prompt">("engine");
   const [retrieverType, setRetrieverType] = useState<"hybrid" | "dense" | "sparse">("hybrid");
-  const [praggGames, setPraggGames] = useState<PraggGame[]>([]);
+  const [carlsenGames, setCarlsenGames] = useState<CarlsenGame[]>([]);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   
@@ -63,15 +63,15 @@ export default function App() {
     }
   }, [report]);
 
-  // Load Pragg games on mount and handle 2-second splash screen timeout
+  // Load Carlsen games on mount and handle 2-second splash screen timeout
   useEffect(() => {
     const timer = setTimeout(() => {
       setIsInitialLoading(false);
     }, 2000);
 
-    fetchPraggGames()
-      .then(setPraggGames)
-      .catch((err) => console.error("Failed to load Pragg games:", err));
+    fetchCarlsenGames()
+      .then(setCarlsenGames)
+      .catch((err) => console.error("Failed to load Carlsen games:", err));
 
     return () => clearTimeout(timer);
   }, []);
@@ -198,7 +198,7 @@ export default function App() {
           isAnalyzing={isAnalyzing}
           error={error}
           onSubmit={handleAnalyze}
-          praggGames={praggGames}
+          carlsenGames={carlsenGames}
         />
 
         {/* Step 2: Dashboard Content */}
