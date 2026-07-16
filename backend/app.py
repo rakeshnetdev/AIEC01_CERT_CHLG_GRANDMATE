@@ -13,7 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from config.settings import get_settings
-from coach.schemas.models import Game, MoveAnalysis, Explanation, Weakness, Drill, CoachReport, Severity, Source
+from coach.schemas.models import Game, MoveAnalysis, Explanation, Weakness, Drill, CoachReport, Severity, Source, DeveloperInsight
 from coach.agent.graph import compile_coach_graph
 from coach.guardrails import validate_request, is_safe_output
 from langchain_core.messages import HumanMessage, AIMessage
@@ -204,6 +204,41 @@ def review_game(request: ReviewRequest):
     
     # Estimate token cost (mock)
     cost = 0.002
+
+    # Reconstruct developer insights
+    rag_queries = []
+    if game.opening_name:
+        rag_queries.append(game.opening_name)
+    for ma in analyses:
+        if ma.label != "ok" and ma.theme:
+            rag_queries.append(ma.theme)
+
+    from coach.agent.prompts import NARRATOR_SYSTEM_PROMPT
+    summary_lines = []
+    for ma in analyses:
+        summary_lines.append(
+            f"- Ply {ma.ply} ({ma.played_san} played, best was {ma.best_san}). "
+            f"Loss: {ma.centipawn_loss}. Severity: {ma.label}. Theme: {ma.theme or 'None'}."
+        )
+    move_analyses_summary = "\n".join(summary_lines)
+    system_prompt = NARRATOR_SYSTEM_PROMPT.format(
+        white_player=game.white,
+        black_player=game.black,
+        user_color=game.user_color,
+        opening_name=game.opening_name or "Unknown Opening",
+        result=game.result,
+        move_analyses_summary=move_analyses_summary,
+        rag_context=final_state.get("rag_context", "")
+    )
+
+    dev_insight = DeveloperInsight(
+        graph_state="finished",
+        active_nodes=["fetch_and_analyse", "retrieve_rag_context", "narrator_agent"],
+        rag_queries=rag_queries,
+        rag_context=final_state.get("rag_context", ""),
+        raw_prompt=system_prompt,
+        stockfish_raw=analyses
+    )
     
     return CoachReport(
         username=request.username or game.white,
@@ -214,7 +249,8 @@ def review_game(request: ReviewRequest):
         drills=drills,
         position_explanation=position_explanation,
         latency_s=round(latency, 2),
-        cost_usd=cost
+        cost_usd=cost,
+        developer_insight=dev_insight
     )
 
 
@@ -228,8 +264,17 @@ def chat_message(request: ChatRequest):
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
         
-    # 2. Invoke LangGraph with message and session_id config
+    # Check if a game has already been analyzed in this session (avoid empty thread crashes)
     config = {"configurable": {"thread_id": request.session_id}}
+    current_state = coach_graph.get_state(config)
+    if not current_state or not current_state.values or not current_state.values.get("game"):
+        logger.warning(f"Chat request failed: No game loaded in session {request.session_id}")
+        return {
+            "reply": "Please load and analyze a chess game first before asking coaching questions!",
+            "developer_insight": None
+        }
+        
+    # 2. Invoke LangGraph with message and session_id config
     inputs = {
         "messages": [HumanMessage(content=request.message)]
     }
@@ -255,4 +300,76 @@ def chat_message(request: ChatRequest):
     if not is_safe_output(reply):
         reply = "I cannot continue this specific conversation topic. Let's focus on chess strategies and analysis."
         
-    return {"reply": reply}
+    # Reconstruct developer insights for active chat turn
+    game = final_state.get("game")
+    analyses = final_state.get("analyses", [])
+    rag_context = final_state.get("rag_context", "")
+    
+    from coach.agent.prompts import NARRATOR_SYSTEM_PROMPT
+    summary_lines = []
+    for ma in analyses:
+        ma_dict = ma if isinstance(ma, dict) else ma.model_dump()
+        summary_lines.append(
+            f"- Ply {ma_dict.get('ply')} ({ma_dict.get('played_san')} played, best was {ma_dict.get('best_san')}). "
+            f"Loss: {ma_dict.get('centipawn_loss')}. Severity: {ma_dict.get('label')}. Theme: {ma_dict.get('theme') or 'None'}."
+        )
+    move_analyses_summary = "\n".join(summary_lines)
+    
+    white_player = "White"
+    black_player = "Black"
+    user_color = "white"
+    opening_name = "Unknown Opening"
+    result = "*"
+    if game:
+        game_dict = game if isinstance(game, dict) else game.model_dump()
+        white_player = game_dict.get("white", "White")
+        black_player = game_dict.get("black", "Black")
+        user_color = game_dict.get("user_color", "white")
+        opening_name = game_dict.get("opening_name") or "Unknown Opening"
+        result = game_dict.get("result", "*")
+
+    system_prompt = NARRATOR_SYSTEM_PROMPT.format(
+        white_player=white_player,
+        black_player=black_player,
+        user_color=user_color,
+        opening_name=opening_name,
+        result=result,
+        move_analyses_summary=move_analyses_summary,
+        rag_context=rag_context
+    )
+    
+    # Format message history as raw prompt context
+    history_str = []
+    for m in messages:
+        sender = "User" if isinstance(m, HumanMessage) else "Assistant"
+        history_str.append(f"{sender}: {m.content}")
+    raw_prompt = f"--- System Prompt ---\n{system_prompt}\n\n--- Conversation History ---\n" + "\n".join(history_str)
+    
+    from coach.schemas.models import DeveloperInsight, MoveAnalysis
+    processed_analyses = []
+    for ma in analyses:
+        if isinstance(ma, dict):
+            processed_analyses.append(MoveAnalysis(**ma))
+        else:
+            processed_analyses.append(ma)
+            
+    rag_queries = []
+    if opening_name != "Unknown Opening":
+        rag_queries.append(opening_name)
+    for ma in processed_analyses:
+        if ma.label != "ok" and ma.theme:
+            rag_queries.append(ma.theme)
+            
+    dev_insight = DeveloperInsight(
+        graph_state="finished (chat follow-up)",
+        active_nodes=["narrator_agent"],
+        rag_queries=rag_queries,
+        rag_context=rag_context,
+        raw_prompt=raw_prompt,
+        stockfish_raw=processed_analyses
+    )
+
+    return {
+        "reply": reply,
+        "developer_insight": dev_insight
+    }

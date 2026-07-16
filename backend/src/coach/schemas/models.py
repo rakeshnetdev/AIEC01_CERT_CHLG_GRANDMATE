@@ -61,6 +61,14 @@ class Drill(BaseModel):
     rating: int
     url: str
 
+class DeveloperInsight(BaseModel):
+    graph_state: str = "finished"
+    active_nodes: List[str] = []
+    rag_queries: List[str] = []
+    rag_context: str = ""
+    raw_prompt: str = ""
+    stockfish_raw: List[MoveAnalysis] = []
+
 class CoachReport(BaseModel):
     username: str
     games_reviewed: int
@@ -71,3 +79,4 @@ class CoachReport(BaseModel):
     position_explanation: List[str] = []
     latency_s: float = 0.0
     cost_usd: float = 0.0
+    developer_insight: Optional[DeveloperInsight] = None
