@@ -78,8 +78,8 @@ def test_guardrails_input_refusal():
         "session_id": "test_session_1"
     }
     response = client.post("/chat", json=chat_payload)
-    assert response.status_code == 400
-    assert "Programming/code requests are not allowed" in response.json()["detail"]
+    assert response.status_code == 200
+    assert "I can only help with chess-related questions" in response.json()["reply"]
     
     # 2. Review input requesting off-topic
     review_payload = {

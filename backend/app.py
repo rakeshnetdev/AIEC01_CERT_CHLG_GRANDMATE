@@ -325,7 +325,11 @@ def chat_message(request: ChatRequest):
     try:
         validate_request(request.message)
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        logger.info(f"Guardrail intercepted off-topic chat query: {request.message}")
+        return {
+            "reply": "I can only help with chess-related questions. Let's focus on chess!",
+            "developer_insight": None
+        }
         
     # 2. Check checkpointer session state
     config = {"configurable": {"thread_id": request.session_id}}
