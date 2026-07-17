@@ -76,8 +76,6 @@ flowchart LR
       SF["Stockfish engine"]
       PC["python-chess legality"]
       LI["Lichess / Chess.com API"]
-      TV["Tavily web search"]
-      PZ["Puzzle DB"]
     end
     ORCH --> TOOLS
     subgraph RAGSYS["RAG"]
@@ -106,14 +104,12 @@ flowchart LR
     F --> AN[Analyze each move with Stockfish]
     AN --> CL[Classify blunder / mistake / inaccuracy]
     CL --> RT["RAG: retrieve concept notes + user's uploaded data"]
-    RT --> SR["Agentic search: Lichess Opening Explorer / Tavily"]
-    SR --> EX["Explainer LLM: grounded why + best plan"]
+    RT --> EX["Explainer LLM: grounded why + best plan"]
     EX --> GG{"Grounding guard: legal AND in engine PV?"}
     GG -- fail --> RT
     GG -- pass --> WK[Summarize top-3 weaknesses]
-    WK --> DR[Recommend drills from Puzzle DB]
-    DR --> MW[Update learner memory]
-    DR --> OUT["Analysis report to user"]
+    WK --> MW[Update learner memory]
+    WK --> OUT["Analysis report to user"]
     R -- ask a concept --> RT
     OUT --> HR[User reviews / asks a follow-up]
     HR -.-> R
@@ -291,3 +287,8 @@ To elevate the application from prototype to a market-ready production demo, we 
 ### 8.3 Live Opponent Scouting Dashboard
 * **Technical Execution:** Implement a search bar in the React UI that accepts a Lichess/Chess.com username, crawls their public game history via FastAPI, aggregates their opening choices, and compiles an automated "opening prep plan" recommending counter-strategies.
 * **Value Add:** Provides competitive tournament players with immediate, actionable game prep utility.
+
+### 8.4 Activating External Web Search & Cloud Storage
+* **Technical Execution:** Integrate **Tavily Web Search** and **Lichess Opening Explorer** into the conversational agent control flow to handle general historical queries and master stats. Migrate local ChromaDB database files to a hosted **Qdrant Cloud** cluster.
+* **Value Add:** Expands the system's knowledge base to general public chess facts and statistics while removing local file-system dependencies.
+

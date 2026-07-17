@@ -22,7 +22,7 @@
 * **Python 3.11+** (virtual environment managed by `uv`)
 * **Node.js 18+** (for frontend UI)
 * **Stockfish Engine** (macOS: `brew install stockfish` · Linux: `sudo apt-get install stockfish`)
-* **API Keys:** `GEMINI_API_KEY`, `OPENAI_API_KEY` (fallback), `TAVILY_API_KEY`
+* **API Keys:** `GEMINI_API_KEY`, `OPENAI_API_KEY` (fallback), `TAVILY_API_KEY` (optional, target scaling)
 
 ### 1. Installation & Environment Setup
 Clone the repository and prepare the configurations:
@@ -32,7 +32,7 @@ cd AIEC01_CERT_CHLG_GRANDMATE
 
 # Create local environment config
 cp backend/.env.example backend/.env
-# Edit backend/.env and populate: GEMINI_API_KEY, OPENAI_API_KEY, TAVILY_API_KEY, STOCKFISH_PATH
+# Edit backend/.env and populate: GEMINI_API_KEY, OPENAI_API_KEY, TAVILY_API_KEY (optional), STOCKFISH_PATH
 ```
 
 ### 2. Run Backend (FastAPI)

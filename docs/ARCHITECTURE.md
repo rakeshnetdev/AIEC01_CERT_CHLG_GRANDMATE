@@ -43,8 +43,6 @@ flowchart TB
       SF["Stockfish"]
       PC["python-chess"]
       LI["Lichess / Chess.com API"]
-      TV["Tavily search"]
-      PZ["Puzzle DB"]
     end
 
     UI --> API --> ORCH
@@ -81,13 +79,11 @@ flowchart TD
     FETCH --> EVAL[Stockfish evaluate each ply]
     EVAL --> CLS[Classify + centipawn loss + theme]
     CLS --> RET[RAG retrieve: concepts + user data]
-    RET --> SRCH[Agentic search: Lichess Explorer / Tavily]
-    SRCH --> EXP[Explainer LLM - narrate facts only]
+    RET --> EXP[Explainer LLM - narrate facts only]
     EXP --> GUARD{Legal AND in PV?}
     GUARD -- no --> RET
     GUARD -- yes --> WEAK[Top-3 weaknesses]
-    WEAK --> DRILL[Puzzle drills]
-    DRILL --> WRITE[Update learner memory]
+    WEAK --> WRITE[Update learner memory]
     WRITE --> REPORT[Render report]
     REPORT --> FOLLOW[Follow-up in chat]
     FOLLOW -.-> ROUTE
