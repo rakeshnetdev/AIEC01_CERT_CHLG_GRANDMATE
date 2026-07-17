@@ -69,3 +69,50 @@ def load_markdown_notes(file_path: Path) -> List[Dict]:
             })
             
     return chunks
+
+
+def load_pdf(file_path: Path) -> List[Dict]:
+    """Loads text from a PDF file page-by-page, chunking each page recursively.
+    
+    This function parses official documents (like the FIDE Laws of Chess PDF)
+    and chunks them into small overlapping segments for context-grounded retrieval.
+    
+    Args:
+        file_path (Path): Path to the target PDF file.
+        
+    Returns:
+        List[Dict]: List of chunks with 'text' and 'metadata' structures.
+    """
+    from langchain_community.document_loaders import PyPDFLoader
+    from langchain_text_splitters import RecursiveCharacterTextSplitter
+    
+    chunks = []
+    if not file_path.exists():
+        return chunks
+        
+    try:
+        # Load the PDF file page-by-page using LangChain's community loader
+        loader = PyPDFLoader(str(file_path))
+        pages = loader.load()
+        
+        # Split pages recursively into smaller segments to fit within LLM context windows.
+        # chunk_size=1000 characters and chunk_overlap=200 characters is chosen to ensure
+        # that rule articles or definitions are not truncated abruptly at boundary points.
+        text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+        split_docs = text_splitter.split_documents(pages)
+        
+        for idx, doc in enumerate(split_docs):
+            chunks.append({
+                "text": doc.page_content,
+                "metadata": {
+                    "source": file_path.name,
+                    "type": "pdf_chunk",
+                    "chunk_id": idx
+                }
+            })
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"Error loading PDF {file_path}: {e}")
+        
+    return chunks
+

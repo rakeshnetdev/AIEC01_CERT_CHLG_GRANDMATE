@@ -25,6 +25,12 @@ dependencies = [
     "langchain-core>=0.3",
     "langsmith>=0.1",
     "langgraph-cli[inmem]",
+    # Required by coach.rag.loader.load_pdf (PyPDFLoader) to ingest the FIDE rulebook
+    # into the 'rules' bucket. Previously undeclared, so load_pdf failed silently and
+    # the rules corpus shipped without the rulebook.
+    "langchain-community>=0.3",
+    "langchain-text-splitters>=0.3",
+    "pypdf>=4.0",
 ]
 
 [project.optional-dependencies]

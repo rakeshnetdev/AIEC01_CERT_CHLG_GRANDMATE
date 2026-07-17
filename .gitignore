@@ -48,6 +48,9 @@ share/python-wheels/
 *.egg-info/
 .installed.cfg
 *.egg
-*.md
-data/
+
+# Local vector-store artifacts only — never ignore data/ wholesale: a bare
+# pattern matches at every level and would drop backend/data/corpus + pgn
+# (the RAG corpus and sample games) from the deploy build.
+/data/chroma/
 

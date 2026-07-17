@@ -35,12 +35,16 @@ phase-by-phase. Pairs with `CAPSTONE_BRIEF.md`/`SUBMISSION.md` (graded write-up)
 **Frontend:** React + Vite + **TypeScript** + Tailwind CSS + shadcn/ui (npm).
 **Backend:** Python 3.11 + **FastAPI** · **LangGraph** (orchestration + memory) · **LiteLLM** gateway
 → **Gemini 1.5 Flash** via your `GEMINI_API_KEY` (fallback: **OpenAI GPT-4o** via `OPENAI_API_KEY`) ·
-**ChromaDB** (vectors; local) · OpenAI embeddings · **Tavily** (agentic web search) · **Stockfish**
+**ChromaDB** (vectors; local) / **Qdrant Cloud** (deployed) · OpenAI embeddings · **Stockfish**
 + python-chess · **RAGAS** + pytest · **LangSmith** (tracing) · **Docker + Render** (backend) +
 **Vercel** (frontend). SQLite for the learner profile.
 
 > **LLM gateway = LiteLLM** (satisfies the cert "gateway" requirement) but calls providers **directly
 > with your own keys** — no OpenRouter. Primary `gemini/gemini-1.5-flash`; fallback `gpt-4o`.
+> **Tavily and the puzzle DB are not part of the active architecture** — they appear in the phase
+> notes below as originally planned, but were moved to the backlog / "next steps" (see
+> `docs/ARCHITECTURE.md` and `Deliverables.md` §8.4). Don't wire new work to them without checking
+> current scope.
 
 ## Repository structure  (frontend/backend separated — see AGENTS.md → Engineering Rules)
 ```
@@ -147,7 +151,7 @@ class Settings(BaseSettings):           # config/settings.py
     inaccuracy_cp: int = 50; mistake_cp: int = 100; blunder_cp: int = 300
     gemini_api_key: str                             # primary (Google Gemini)
     openai_api_key: Optional[str] = None            # fallback (OpenAI)
-    llm_model: str = "gemini/gemini-3-pro"          # LiteLLM model id (primary)
+    llm_model: str = "gemini/gemini-1.5-flash"          # LiteLLM model id (primary)
     llm_fallback_model: str = "gpt-4o"              # LiteLLM model id (fallback)
     embed_model: str = "text-embedding-3-small"
     qdrant_url: Optional[str] = None; tavily_api_key: Optional[str] = None
@@ -296,6 +300,25 @@ improvement (structure-aware chunking, citation-forcing explainer prompt, or the
 each proven with the harness.
 **Acceptance:** ✓ comparison table (baseline vs advanced) on RAGAS context precision/recall · ✓ the
 2nd change shows a meaningful, harness-backed gain.
+
+---
+
+# Phase 9 — Multi-agent refactor + dual-corpus RAG + deploy readiness
+**Goal:** break the monolithic `narrator_agent` into a specialist team, split the corpus by domain,
+make the coordinator cheap, and fix what only broke in the deployed build.
+**Tasks:** (1) rewire the graph to **router → specialist → synthesizer** (`router_agent_node`,
+`strategy_node`, `rules_node`, `synthesizer_node`, `should_delegate`), specialists looping back to the
+router, guard retries targeting the synthesizer; (2) **router fast-pathing** — decide deterministically
+whenever state implies the outcome, calling the LLM only for a genuine `HumanMessage` follow-up with no
+findings yet; (3) **dual-corpus bucketed RAG** — `data/corpus/rules/` (incl. `FIDE - LawsOfChess.pdf`)
+vs. `data/corpus/strategies/`, `bucket` metadata on every chunk, filter applied to both dense and BM25
+halves before RRF; (4) **agent tracing** — `AgentStep` + `execution_log` on `DeveloperInsight`, surfaced
+as the **agents** and **logs** tabs of the Graph Execution Inspector; (5) **deploy fixes** — narrow the
+corpus-eating `data/` ignore rule to `/data/chroma/`, drop the hardcoded developer path in
+`/carlsen-games`, and keep the PGN dropdown rendered-but-disabled when no games load.
+**Acceptance:** ✓ `tests/test_phase9.py` green (bucketed retrieval per specialist + `should_delegate`)
+· ✓ router costs 0 LLM calls on `/review` and 1 on a `/chat` turn (see `final_docs/change_document.md`)
+· ✓ `git ls-files backend/data` lists both corpus buckets and `Carlsen.pgn`.
 
 ---
 

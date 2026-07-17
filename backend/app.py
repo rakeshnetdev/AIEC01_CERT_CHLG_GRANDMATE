@@ -23,7 +23,8 @@ from coach.schemas.models import (
     CoachReport,
     Source,
     DeveloperInsight,
-    GroundingEvent
+    GroundingEvent,
+    AgentStep
 )
 from coach.agent.graph import compile_coach_graph
 from coach.guardrails import validate_request, is_safe_output
@@ -298,15 +299,20 @@ def review_game(request: ReviewRequest):
     grounding_events = [GroundingEvent(**evt) if isinstance(evt, dict) else evt for evt in raw_grounding_log]
     
     system_prompt = _build_system_prompt(game, analyses, rag_context)
+    raw_steps = final_state.get("agent_steps") or []
+    agent_steps = [AgentStep(**s) if isinstance(s, dict) else s for s in raw_steps]
+            
     dev_insight = DeveloperInsight(
         graph_state="finished",
-        active_nodes=["fetch_and_analyse", "retrieve_rag_context", "narrator_agent", "grounding_guard"],
+        active_nodes=["fetch_and_analyse", "retrieve_rag_context", "router_agent", "strategy_node", "rules_node", "synthesizer_node", "grounding_guard"],
         rag_queries=rag_queries,
         rag_context=rag_context,
         raw_prompt=system_prompt,
         stockfish_raw=analyses,
         retriever_type=request.retriever_type or "hybrid",
-        grounding_log=grounding_events
+        grounding_log=grounding_events,
+        execution_log=final_state.get("execution_logs") or [] ,
+        agent_steps=agent_steps
     )
     
     # Calculate game status based on result and user_color
@@ -400,14 +406,24 @@ def chat_message(request: ChatRequest):
             if ma.theme.lower() not in ["tactics", "opening", "endgame", "check"]:
                 rag_queries.append(ma.theme)
             
+    # Build grounding log from graph state
+    raw_grounding_log = final_state.get("grounding_log") or []
+    grounding_events = [GroundingEvent(**evt) if isinstance(evt, dict) else evt for evt in raw_grounding_log]
+            
+    raw_steps = final_state.get("agent_steps") or []
+    agent_steps = [AgentStep(**s) if isinstance(s, dict) else s for s in raw_steps]
+            
     dev_insight = DeveloperInsight(
         graph_state="finished (chat follow-up)",
-        active_nodes=["narrator_agent"],
+        active_nodes=["router_agent", "strategy_node", "rules_node", "synthesizer_node", "grounding_guard"],
         rag_queries=rag_queries,
         rag_context=rag_context,
         raw_prompt=raw_prompt,
         stockfish_raw=analyses,
-        retriever_type=current_state.values.get("retriever_type") or "hybrid"
+        retriever_type=current_state.values.get("retriever_type") or "hybrid",
+        grounding_log=grounding_events,
+        execution_log=final_state.get("execution_logs") or [],
+        agent_steps=agent_steps
     )
     
     return {
@@ -419,10 +435,11 @@ def chat_message(request: ChatRequest):
 @app.get("/carlsen-games")
 def get_carlsen_games():
     """Reads the first 6 games from Carlsen.pgn and returns their metadata and raw PGN text."""
-    pgn_path = "/Users/sriraki/Desktop/CodePractice/ai_practice/AE-CH/prj/grandmate/backend/data/corpus/Carlsen.pgn"
-    if not os.path.exists(pgn_path):
-        pgn_path = "data/corpus/Carlsen.pgn"
-        
+    # Locate Carlsen.pgn under data/pgn, relative to this file so it resolves
+    # the same way regardless of the process working directory.
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    pgn_path = os.path.join(base_dir, "data", "pgn", "Carlsen.pgn")
+
     if not os.path.exists(pgn_path):
         logger.warning(f"Carlsen PGN file not found at {pgn_path}")
         return []

@@ -1,7 +1,37 @@
 {
-  "detection_f1": 1.0,
-  "severity_accuracy": 1.0,
+  "meta": {
+    "oracle_depth": 24,
+    "production_depth": 16,
+    "dataset_n": 151,
+    "thresholds_cp": {
+      "inaccuracy": 50,
+      "mistake": 100,
+      "blunder": 300
+    }
+  },
+  "detection_f1": 0.9467455621301775,
+  "severity_accuracy": 0.9072847682119205,
+  "precision": 0.975609756097561,
+  "recall": 0.9195402298850575,
+  "confusion": {
+    "tp": 80,
+    "fp": 2,
+    "fn": 7,
+    "tn": 62
+  },
   "illegal_move_rate": 0.0,
-  "ragas_faithfulness": 1.0,
-  "coaching_quality": 4.0
+  "ragas_faithfulness": 0.85,
+  "coaching_quality": 4.0,
+  "judged_layer": {
+    "n_attempted": 3,
+    "pipeline_failures": 0,
+    "judge_failures": 0,
+    "rows_without_rag_context": 1,
+    "illegal_move_rate": 0.0,
+    "moves_checked": 3,
+    "ragas_faithfulness": 0.85,
+    "faithfulness_n": 2,
+    "coaching_quality": 4.0,
+    "coaching_n": 3
+  }
 }

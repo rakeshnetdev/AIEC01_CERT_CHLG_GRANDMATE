@@ -10,8 +10,10 @@ import { ChatPanel } from "./components/ChatPanel";
 import { Crown, RefreshCw } from "lucide-react";
 
 export default function App() {
-  // Session ID generation for conversational memory
-  const [sessionId] = useState(() => `session_${Math.random().toString(36).substring(2, 11)}`);
+  // Session ID generation for conversational memory.
+  // Regenerated on every "Run Analysis" so a new user/PGN always starts a fresh
+  // LangGraph thread instead of inheriting the previous game's chat history.
+  const [sessionId, setSessionId] = useState(() => `session_${Math.random().toString(36).substring(2, 11)}`);
   
   // App states
   const [username, setUsername] = useState("");
@@ -19,9 +21,10 @@ export default function App() {
   const [pgn, setPgn] = useState("");
   const [activeTab, setActiveTab] = useState<"fetch" | "paste">("fetch");
   const [showDevInsights, setShowDevInsights] = useState(false);
-  const [activeDevTab, setActiveDevTab] = useState<"engine" | "rag" | "prompt" | "grounding">("engine");
+  const [activeDevTab, setActiveDevTab] = useState<"engine" | "rag" | "prompt" | "grounding" | "logs" | "agents">("engine");
   const [retrieverType, setRetrieverType] = useState<"hybrid" | "dense" | "sparse">("hybrid");
   const [carlsenGames, setCarlsenGames] = useState<CarlsenGame[]>([]);
+  const [carlsenError, setCarlsenError] = useState<string | null>(null);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   
@@ -70,8 +73,16 @@ export default function App() {
     }, 2000);
 
     fetchCarlsenGames()
-      .then(setCarlsenGames)
-      .catch((err) => console.error("Failed to load Carlsen games:", err));
+      .then((games) => {
+        setCarlsenGames(games);
+        if (games.length === 0) {
+          setCarlsenError("The backend returned no sample games — Carlsen.pgn may be missing from the deployment.");
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to load Carlsen games:", err);
+        setCarlsenError("Couldn't reach the backend to load sample games. You can still paste a PGN below.");
+      });
 
     return () => clearTimeout(timer);
   }, []);
@@ -199,6 +210,7 @@ export default function App() {
           error={error}
           onSubmit={handleAnalyze}
           carlsenGames={carlsenGames}
+          carlsenError={carlsenError}
         />
 
         {/* Step 2: Dashboard Content */}

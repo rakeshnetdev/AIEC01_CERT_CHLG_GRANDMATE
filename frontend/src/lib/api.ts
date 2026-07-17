@@ -47,6 +47,12 @@ export interface GroundingEvent {
   narrative_snippet: string;
 }
 
+export interface AgentStep {
+  agent_name: string;
+  prompt: string;
+  response: string;
+}
+
 export interface DeveloperInsight {
   graph_state: string;
   active_nodes: string[];
@@ -56,6 +62,8 @@ export interface DeveloperInsight {
   stockfish_raw: MoveAnalysis[];
   retriever_type: string;
   grounding_log?: GroundingEvent[];
+  execution_log?: string[];
+  agent_steps?: AgentStep[];
 }
 
 export interface CoachReport {
