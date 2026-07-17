@@ -13,7 +13,6 @@
 | 📋 **Full Deliverables** | Core challenge deliverables and self-assessment checklists | [docs/Deliverables.md](./docs/Deliverables.md) |
 | 🏗️ **System Architecture** | Subsystem flowcharts and deployment topologies | [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) |
 | 🗺️ **Implementation Plan** | Chronological development phases and engineering logs | [docs/PLAN.md](./docs/PLAN.md) |
-| ⚡ **Change Document** | Router fast-pathing optimization: before/after graph topology and LLM-call accounting | [final_docs/change_document.md](./final_docs/change_document.md) |
 
 ---
 
