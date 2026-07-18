@@ -9,11 +9,15 @@ import { DevInsights } from "./components/DevInsights";
 import { ChatPanel } from "./components/ChatPanel";
 import { Crown, RefreshCw } from "lucide-react";
 
+function generateSessionId() {
+  return `session_${Math.random().toString(36).substring(2, 11)}`;
+}
+
 export default function App() {
-  // Session ID generation for conversational memory.
-  // Regenerated on every "Run Analysis" so a new user/PGN always starts a fresh
-  // LangGraph thread instead of inheriting the previous game's chat history.
-  const [sessionId, setSessionId] = useState(() => `session_${Math.random().toString(36).substring(2, 11)}`);
+  // Session ID for conversational memory. Regenerated on every "Run Analysis" (see
+  // handleAnalyze) so a new user/PGN always starts a fresh LangGraph thread instead of
+  // inheriting the previous game's chat history — the backend keys all state by this id.
+  const [sessionId, setSessionId] = useState(generateSessionId);
   
   // App states
   const [username, setUsername] = useState("");
@@ -94,11 +98,17 @@ export default function App() {
     setError(null);
     setReport(null);
     setMessages([]); // Reset conversation for the new game
-    
+
+    // Fresh thread per review: reusing the old session_id would resume the previous
+    // game's LangGraph checkpoint (old chat history, old findings) instead of starting
+    // clean. setSessionId is async, so use the new id directly for this request too.
+    const newSessionId = generateSessionId();
+    setSessionId(newSessionId);
+
     try {
-      const payload = activeTab === "fetch" 
-        ? { username, source, max_games: 1, session_id: sessionId, retriever_type: retrieverType }
-        : { pgn, session_id: sessionId, retriever_type: retrieverType };
+      const payload = activeTab === "fetch"
+        ? { username, source, max_games: 1, session_id: newSessionId, retriever_type: retrieverType }
+        : { pgn, session_id: newSessionId, retriever_type: retrieverType };
         
       if (activeTab === "fetch" && !username.trim()) {
         throw new Error("Please enter a username.");

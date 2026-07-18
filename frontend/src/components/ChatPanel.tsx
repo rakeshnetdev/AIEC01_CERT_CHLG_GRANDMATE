@@ -204,6 +204,8 @@ export function ChatPanel({
             <optgroup label="Openings & Strategy">
               <option value="Can you explain the main strategic plan for my opening?">Can you explain the main strategic plan for my opening?</option>
               <option value="What positional target squares should I have focused on?">What positional target squares should I have focused on?</option>
+              <option value="What are the typical plans and traps in the opening I played?">What are the typical plans and traps in the opening I played?</option>
+              <option value="Was my opening choice sound, or is there a stronger reply to my opponent's first move?">Was my opening choice sound, or is there a stronger reply to my opponent's first move?</option>
             </optgroup>
             <optgroup label="Defensive & Middlegame Play">
               <option value="How could I have better defended my position in the middlegame?">How could I have better defended my position in the middlegame?</option>
@@ -212,6 +214,12 @@ export function ChatPanel({
             <optgroup label="Pattern Evaluation">
               <option value="Did I lose because of tactical oversights, opening prep, or bad endgames?">Did I lose because of tactical oversights, opening prep, or bad endgames?</option>
               <option value="What specific concepts should I study next to improve?">What specific concepts should I study next to improve?</option>
+            </optgroup>
+            <optgroup label="Rules & Legality">
+              <option value="When exactly is castling legal, and when is it not?">When exactly is castling legal, and when is it not?</option>
+              <option value="What's the difference between stalemate and checkmate?">What's the difference between stalemate and checkmate?</option>
+              <option value="What are the conditions for a legal en passant capture?">What are the conditions for a legal en passant capture?</option>
+              <option value="When can a draw be claimed by threefold repetition?">When can a draw be claimed by threefold repetition?</option>
             </optgroup>
           </select>
         </div>

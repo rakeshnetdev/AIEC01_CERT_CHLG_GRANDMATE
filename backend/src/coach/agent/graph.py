@@ -59,6 +59,30 @@ class CoachState(TypedDict):
 
 
 
+def _build_move_analyses_summary(analyses: List[MoveAnalysis], max_good: int = 3, max_mistakes: int = 10) -> str:
+    """Summarizes both strong moves and mistakes, so the LLM has concrete material for 'what went
+    well' as well as 'what went wrong' — a plain mistakes-only list can't produce the former."""
+    good_moves = []
+    mistakes = []
+    for ma in analyses:
+        if ma.label != "ok":
+            mistakes.append(
+                f"- Ply {ma.ply}: {ma.played_san} played ({ma.label}), best was {ma.best_san}. "
+                f"Centipawn loss: {ma.centipawn_loss}. Theme: {ma.theme or 'None'}."
+            )
+        elif ma.played_uci == ma.best_uci:
+            good_moves.append(f"- Ply {ma.ply}: {ma.played_san} matched the engine's top choice.")
+
+    lines = []
+    if good_moves:
+        lines.append("Strong moves (matched the engine's best choice):")
+        lines.extend(good_moves[:max_good])
+    if mistakes:
+        lines.append("Mistakes:")
+        lines.extend(mistakes[:max_mistakes])
+    return "\n".join(lines) if lines else "No notable moves flagged by the engine for this game."
+
+
 def fetch_and_analyse_node(state: CoachState) -> dict:
     """Ingests or parses the game, then runs the per-move Stockfish centipawn engine analysis."""
     logger.info("Running fetch_and_analyse node")
@@ -441,26 +465,26 @@ def router_agent_node(state: CoachState) -> dict:
 def strategy_node(state: CoachState) -> dict:
     """Queries RAG strategies database and calls strategy specialist agent."""
     logger.info("Running strategy node")
-    query = state["messages"][-1].content if state.get("messages") else "tactical themes"
+    game = state.get("game")
+    if state.get("messages"):
+        query = state["messages"][-1].content
+    elif game and game.opening_name:
+        query = f"strategic themes and plans in the {game.opening_name}"
+    else:
+        query = "tactical themes"
     settings = get_settings()
-    
+
     # Retrieve strategies context
     docs = retrieve_context(query, persist_dir=settings.chroma_db_path, limit=2, bucket="strategies")
     rag_context = "\n\n".join([doc["text"] for doc in docs])
-    
+
     # Update rag_context in state for history and compatibility
     existing_rag = state.get("rag_context", "")
     new_rag = existing_rag + ("\n\n" if existing_rag else "") + rag_context
-    
+
     analyses = state.get("analyses", [])
-    summary_lines = []
-    for ma in analyses:
-        if ma.label != "ok":
-            summary_lines.append(
-                f"- Ply {ma.ply} ({ma.played_san} played, best was {ma.best_san}). Loss: {ma.centipawn_loss}. Theme: {ma.theme or 'None'}."
-            )
-    move_analyses_summary = "\n".join(summary_lines)
-    
+    move_analyses_summary = _build_move_analyses_summary(analyses)
+
     system_prompt = STRATEGY_SYSTEM_PROMPT.format(
         rag_context=rag_context,
         move_analyses_summary=move_analyses_summary
@@ -501,19 +525,24 @@ def strategy_node(state: CoachState) -> dict:
 def rules_node(state: CoachState) -> dict:
     """Queries RAG rules database and calls rules specialist agent."""
     logger.info("Running rules node")
-    query = state["messages"][-1].content if state.get("messages") else "laws of chess"
+    has_question = bool(state.get("messages"))
+    query = state["messages"][-1].content if has_question else "laws of chess"
     settings = get_settings()
-    
+
     # Retrieve rules context
     docs = retrieve_context(query, persist_dir=settings.chroma_db_path, limit=2, bucket="rules")
     rag_context = "\n\n".join([doc["text"] for doc in docs])
-    
+
     # Update rag_context in state for history and compatibility
     existing_rag = state.get("rag_context", "")
     new_rag = existing_rag + ("\n\n" if existing_rag else "") + rag_context
-    
+
+    prompt_query = query if has_question else (
+        "N/A — no specific rules question was asked; this is a general game review."
+    )
     system_prompt = RULES_SYSTEM_PROMPT.format(
-        rag_context=rag_context
+        rag_context=rag_context,
+        query=prompt_query
     )
     
     llm_messages = [
@@ -553,11 +582,26 @@ def synthesizer_node(state: CoachState) -> dict:
     logger.info("Running synthesizer node")
     strategy = state.get("strategy_findings")
     rules = state.get("rules_findings")
-    
+
     strategy_summary = strategy["summary"] if strategy else "No strategic themes analyzed."
     rules_summary = rules["summary"] if rules else "No rules themes analyzed."
-    
+    if rules_summary.strip() == "NO_RULES_QUESTION":
+        rules_summary = "No rules themes analyzed."
+
+    game = state.get("game")
+    analyses = state.get("analyses", [])
+    if game:
+        game_context = (
+            f"White: {game.white} | Black: {game.black} | Result: {game.result} | "
+            f"Opening: {game.opening_name or 'Unknown'}"
+        )
+    else:
+        game_context = "No game loaded."
+    move_analyses_summary = _build_move_analyses_summary(analyses)
+
     system_prompt = SYNTHESIZER_SYSTEM_PROMPT.format(
+        game_context=game_context,
+        move_analyses_summary=move_analyses_summary,
         strategy_findings=strategy_summary,
         rules_findings=rules_summary
     )
