@@ -9,18 +9,18 @@
       "blunder": 300
     }
   },
-  "detection_f1": 0.9467455621301775,
+  "detection_f1": 0.9585798816568047,
   "severity_accuracy": 0.9072847682119205,
-  "precision": 0.975609756097561,
-  "recall": 0.9195402298850575,
+  "precision": 0.9878048780487805,
+  "recall": 0.9310344827586207,
   "confusion": {
-    "tp": 80,
-    "fp": 2,
-    "fn": 7,
-    "tn": 62
+    "tp": 81,
+    "fp": 1,
+    "fn": 6,
+    "tn": 63
   },
   "illegal_move_rate": 0.0,
-  "ragas_faithfulness": 0.85,
+  "ragas_faithfulness": 1.0,
   "coaching_quality": 4.0,
   "judged_layer": {
     "n_attempted": 3,
@@ -28,8 +28,8 @@
     "judge_failures": 0,
     "rows_without_rag_context": 1,
     "illegal_move_rate": 0.0,
-    "moves_checked": 3,
-    "ragas_faithfulness": 0.85,
+    "moves_checked": 1,
+    "ragas_faithfulness": 1.0,
     "faithfulness_n": 2,
     "coaching_quality": 4.0,
     "coaching_n": 3

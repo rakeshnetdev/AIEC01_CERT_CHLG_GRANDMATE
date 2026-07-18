@@ -3,13 +3,12 @@ import re
 from typing import TypedDict, List, Optional, Annotated
 from langgraph.graph import StateGraph, END
 from langgraph.graph.message import add_messages
-from langchain_core.messages import BaseMessage, SystemMessage, HumanMessage, AIMessage
+from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
 
 import chess
 from config.settings import get_settings
 from coach.schemas.models import Game, MoveAnalysis
 from coach.agent.prompts import (
-    NARRATOR_SYSTEM_PROMPT,
     ROUTER_SYSTEM_PROMPT,
     STRATEGY_SYSTEM_PROMPT,
     RULES_SYSTEM_PROMPT,
@@ -170,84 +169,6 @@ def retrieve_rag_context_node(state: CoachState) -> dict:
     }
 
 
-def narrator_agent_node(state: CoachState) -> dict:
-    """Translates engine evaluations and RAG context into a cohesive Markdown summary."""
-    logger.info("Running narrator_agent node")
-    game = state.get("game")
-    analyses = state.get("analyses", [])
-    
-    # Exclude OK moves from prompt summary to preserve token budget
-    processed_analyses = []
-    for ma in analyses:
-        if isinstance(ma, dict):
-            if ma.get("label") != "ok":
-                processed_analyses.append(ma)
-        else:
-            if ma.label != "ok":
-                processed_analyses.append(ma)
-    analyses = processed_analyses
-    
-    rag_context = state.get("rag_context", "")
-    
-    if not game:
-        return {"output": "No game available to narrate."}
-        
-    # Format move analysis list
-    summary_lines = []
-    for ma in analyses:
-        summary_lines.append(
-            f"- Ply {ma.ply} ({ma.played_san} played, best was {ma.best_san}). "
-            f"Score before: {ma.eval_before_cp}, after: {ma.eval_after_cp}. "
-            f"Loss: {ma.centipawn_loss}. Severity: {ma.label}. Theme: {ma.theme or 'None'}."
-        )
-    move_analyses_summary = "\n".join(summary_lines)
-    
-    # Format system prompt
-    system_prompt = NARRATOR_SYSTEM_PROMPT.format(
-        white_player=game.white,
-        black_player=game.black,
-        user_color=game.user_color,
-        opening_name=game.opening_name or "Unknown Opening",
-        result=game.result,
-        move_analyses_summary=move_analyses_summary,
-        rag_context=rag_context
-    )
-    
-    # Build LLM messages
-    llm_messages = [{"role": "system", "content": system_prompt}]
-    
-    for m in state.get("messages", []):
-        if isinstance(m, HumanMessage):
-            llm_messages.append({"role": "user", "content": m.content})
-        elif isinstance(m, AIMessage):
-            # If it's a grounding feedback message, inject it to guide corrections
-            if m.content.startswith("Grounding check: approved=False"):
-                llm_messages.append({"role": "system", "content": f"Feedback from evaluator: {m.content}. Please rewrite the summary correcting these issues."})
-            else:
-                llm_messages.append({"role": "assistant", "content": m.content})
-        elif isinstance(m, SystemMessage):
-            llm_messages.append({"role": "system", "content": m.content})
-            
-    if not any(msg["role"] == "user" for msg in llm_messages):
-        llm_messages.append({"role": "user", "content": "Please narrate my game."})
-        
-    # Request completion from LiteLLM gateway
-    output = chat(messages=llm_messages)
-    
-    # Render prompt text for DevInsights tracing
-    prompt_str = "\n".join([f"[{m['role'].upper()}]: {m['content']}" for m in llm_messages])
-    
-    return {
-        "output": output,
-        "messages": [AIMessage(content=output)],
-        "agent_steps": [{
-            "agent_name": "Narrator Agent",
-            "prompt": prompt_str,
-            "response": output
-        }]
-    }
-
-
 def check_deterministic_grounding(output: str, game: Optional[Game], analyses: List[MoveAnalysis]) -> tuple[bool, str]:
     """Scans text output to ensure all mentioned chess moves are legal in the game's context."""
     # Matches patterns like "Nf6", "e4", "1.e4", "Bxh7+", "O-O"
@@ -392,7 +313,7 @@ def grounding_guard_node(state: CoachState) -> dict:
 
 
 def should_continue_guard(state: CoachState) -> str:
-    """Decides if the graph should proceed to END or route back to narrator_agent for correction."""
+    """Decides if the graph should proceed to END or route back to synthesizer_node for correction."""
     retry_count = state.get("retry_count") or 0
     messages = state.get("messages", [])
     

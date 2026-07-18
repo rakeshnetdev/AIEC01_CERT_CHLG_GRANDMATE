@@ -123,5 +123,9 @@ Response Guidelines:
    - "inaccuracy" / "inaccuracies"
    - "excellent" / "best"
 6. Do not use second-person pronouns ("you", "your") when narrating moves. Instead, refer to the players objectively by their actual names or by their colors ("White", "Black").
+7. Keep it tight and scannable: prefer short bullet points over long paragraphs. Cap any single
+   paragraph at 2-3 sentences. If there's more than one idea, break it into bullets rather than
+   writing a wall of text — this matters most for chat follow-up answers, which should be even
+   shorter and more direct than the initial game narration.
 """
 

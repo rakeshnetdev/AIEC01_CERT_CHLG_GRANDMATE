@@ -218,7 +218,7 @@ export default function App() {
           <div ref={loaderRef} className="glass-panel rounded-2xl p-8 flex flex-col items-center justify-center gap-4 text-center shadow-xl border border-white/5 animate-pulse">
             <RefreshCw className="w-8 h-8 animate-spin text-sky-400" />
             <h3 className="text-lg font-bold text-white">Running Grandmate Chess Analysis...</h3>
-            <p className="text-xs text-slate-400 max-w-sm">Stockfish is reviewing moves and the RAG helper is fetching opening theory. This will take ~2 seconds.</p>
+            <p className="text-xs text-slate-400 max-w-sm">Checking every move and pulling up relevant chess tips. This will take about 2 seconds.</p>
           </div>
         )}
 

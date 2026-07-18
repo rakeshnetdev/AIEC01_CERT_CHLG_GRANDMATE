@@ -81,7 +81,8 @@ learner profile.
 grandmate/
 ├── AGENTS.md CLAUDE.md README.md      # this file, Claude Code notes, project overview
 ├── docs/                        # live architecture, plan, deliverables (source of truth)
-│   ├── ARCHITECTURE.md  PLAN.md  Deliverables.md  grading-rubric.md  change_document.md
+│   ├── ARCHITECTURE.md  PLAN.md  Deliverables.md  synthetic_data_and_eval_design.md
+│   ├── retriever_evaluation_report.md  diagrams/
 ├── backend/                     # FastAPI + Python — ALL logic, engine, keys (uv)
 │   ├── app.py                   # FastAPI: POST /review, POST /chat, GET /health
 │   ├── config/settings.py       # pydantic-settings (engine path, models, thresholds, keys)

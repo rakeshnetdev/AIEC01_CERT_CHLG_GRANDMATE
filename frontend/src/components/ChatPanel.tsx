@@ -87,6 +87,43 @@ function highlightChessKeywords(text: string) {
   });
 }
 
+function renderMessageContent(text: string) {
+  if (!text) return null;
+  const lines = text.split("\n");
+  const elements: React.ReactNode[] = [];
+  let currentList: string[] = [];
+
+  const flushList = () => {
+    if (currentList.length === 0) return;
+    elements.push(
+      <ul key={`list-${elements.length}`} className="list-disc list-outside pl-4 space-y-1 my-1">
+        {currentList.map((item, i) => (
+          <li key={i}>{highlightChessKeywords(item)}</li>
+        ))}
+      </ul>
+    );
+    currentList = [];
+  };
+
+  lines.forEach((rawLine, idx) => {
+    const trimmed = rawLine.trim();
+    const bulletMatch = trimmed.match(/^(?:[-*]|\d+\.)\s+(.*)/);
+    if (bulletMatch) {
+      currentList.push(bulletMatch[1]);
+      return;
+    }
+    flushList();
+    if (trimmed === "") return;
+    elements.push(
+      <p key={`p-${idx}`} className="my-1 first:mt-0 last:mb-0">
+        {highlightChessKeywords(trimmed)}
+      </p>
+    );
+  });
+  flushList();
+  return elements;
+}
+
 export function ChatPanel({
   messages,
   chatInput,
@@ -96,7 +133,7 @@ export function ChatPanel({
   chatEndRef
 }: ChatPanelProps) {
   return (
-    <div className="lg:col-span-1 flex flex-col h-[650px] glass-panel rounded-2xl overflow-hidden shadow-xl border border-white/5">
+    <div className="lg:col-span-1 flex flex-col h-[650px] lg:h-[calc(100vh-12rem)] glass-panel rounded-2xl overflow-hidden shadow-xl border border-white/5">
       {/* Panel Header */}
       <div className="bg-slate-900/60 p-4 border-b border-white/5 flex items-center gap-3">
         <div className="w-8 h-8 rounded-lg bg-sky-500/10 flex items-center justify-center text-sky-400 border border-sky-500/20">
@@ -125,7 +162,11 @@ export function ChatPanel({
                 : "self-start bg-slate-900 border border-white/5 text-slate-300 rounded-bl-none"
             }`}
           >
-            <span>{m.sender === "user" ? m.text : highlightChessKeywords(m.text)}</span>
+            {m.sender === "user" ? (
+              <span>{m.text}</span>
+            ) : (
+              <div className="flex flex-col">{renderMessageContent(m.text)}</div>
+            )}
           </div>
         ))}
         {isSendingChat && (
