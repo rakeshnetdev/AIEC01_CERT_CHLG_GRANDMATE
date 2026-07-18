@@ -1,14 +1,49 @@
+import os
+import logging
 import chromadb
 from chromadb.utils import embedding_functions
+from config.settings import get_settings
+
+logger = logging.getLogger(__name__)
+
+def _get_embedding_function():
+    """Initializes and returns the OpenAI embedding function using configured settings.
+    
+    Falls back to Chroma's local DefaultEmbeddingFunction if the OpenAI API Key is not present.
+    """
+    settings = get_settings()
+    api_key = settings.openai_api_key or os.environ.get("OPENAI_API_KEY")
+    
+    if api_key and api_key != "mock_key":
+        logger.info(f"Using OpenAIEmbeddingFunction with model '{settings.embed_model}'")
+        return embedding_functions.OpenAIEmbeddingFunction(
+            api_key=api_key,
+            model_name=settings.embed_model or "text-embedding-3-small"
+        )
+    else:
+        logger.warning("OpenAI API key not configured. Falling back to local DefaultEmbeddingFunction.")
+        return embedding_functions.DefaultEmbeddingFunction()
+
 
 def get_collection(persist_dir: str):
-    """Initializes and returns a persistent ChromaDB collection."""
+    """Initializes and returns a persistent ChromaDB collection.
+    
+    Handles embedding function conflicts by loading the collection without 
+    specifying the function if a mismatch is detected.
+    """
     client = chromadb.PersistentClient(path=persist_dir)
-    embedding_func = embedding_functions.DefaultEmbeddingFunction()
-    return client.get_or_create_collection(
-        name="chess_rag",
-        embedding_function=embedding_func
-    )
+    embedding_func = _get_embedding_function()
+    try:
+        return client.get_or_create_collection(
+            name="chess_rag",
+            embedding_function=embedding_func
+        )
+    except ValueError as e:
+        if "embedding function" in str(e).lower():
+            logger.warning("Embedding function mismatch detected. Loading collection using persisted configuration.")
+            return client.get_collection(name="chess_rag")
+        raise e
+
 
 def reset_collection(persist_dir: str):
     """Deletes and recreates the ChromaDB collection to clear previous documents."""
@@ -17,7 +52,7 @@ def reset_collection(persist_dir: str):
         client.delete_collection(name="chess_rag")
     except Exception:
         pass
-    embedding_func = embedding_functions.DefaultEmbeddingFunction()
+    embedding_func = _get_embedding_function()
     return client.get_or_create_collection(
         name="chess_rag",
         embedding_function=embedding_func

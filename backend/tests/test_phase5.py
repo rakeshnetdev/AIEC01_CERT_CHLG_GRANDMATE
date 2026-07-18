@@ -159,6 +159,12 @@ def test_review_and_chat_session_continuity(mock_chat, mock_retrieve_context, mo
     reply_iter = iter(expected_replies)
     
     def chat_side_effect(messages, **kwargs):
+        # Determine if it's the Router query
+        first_msg = messages[0]
+        first_msg_content = first_msg["content"] if isinstance(first_msg, dict) else first_msg.content
+        if "Routing" in first_msg_content:
+            return "none"
+            
         # Determine if it's the Judge query
         last_msg = messages[-1]
         msg_content = last_msg["content"] if isinstance(last_msg, dict) else last_msg.content

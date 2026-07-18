@@ -17,6 +17,7 @@ interface AnalysisFormProps {
   error: string | null;
   onSubmit: (e: React.FormEvent) => void;
   carlsenGames: CarlsenGame[];
+  carlsenError: string | null;
 }
 
 export function AnalysisForm({
@@ -33,8 +34,10 @@ export function AnalysisForm({
   isAnalyzing,
   error,
   onSubmit,
-  carlsenGames
+  carlsenGames,
+  carlsenError
 }: AnalysisFormProps) {
+  const hasCarlsenGames = carlsenGames && carlsenGames.length > 0;
   return (
     <section className="glass-panel rounded-2xl p-4 md:p-5 flex flex-col gap-4 shadow-xl relative overflow-hidden">
       <div className="absolute top-0 right-0 w-80 h-80 bg-sky-500/5 rounded-full filter blur-[80px] -z-10"></div>
@@ -159,27 +162,33 @@ export function AnalysisForm({
           </div>
         ) : (
           <div className="flex flex-col gap-4">
-            {carlsenGames && carlsenGames.length > 0 && (
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[10px] font-bold text-slate-500 tracking-wider uppercase">Load Magnus Carlsen's Top Games</label>
-                <select
-                  onChange={(e) => {
-                    if (e.target.value) {
-                      setPgn(e.target.value);
-                    }
-                  }}
-                  className="w-full md:max-w-md bg-slate-900/60 border border-white/10 rounded-lg p-2 text-xs focus:border-sky-400 focus:outline-none text-slate-300"
-                  defaultValue=""
-                >
-                  <option value="">-- Select a game from Carlsen.pgn --</option>
-                  {carlsenGames.map((game, idx) => (
-                    <option key={idx} value={game.pgn} className="bg-slate-950 text-slate-100">
-                      {game.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[10px] font-bold text-slate-500 tracking-wider uppercase">Load Magnus Carlsen's Top Games</label>
+              <select
+                disabled={!hasCarlsenGames}
+                onChange={(e) => {
+                  if (e.target.value) {
+                    setPgn(e.target.value);
+                  }
+                }}
+                className={`w-full md:max-w-md bg-slate-900/60 border border-white/10 rounded-lg p-2 text-xs focus:border-sky-400 focus:outline-none text-slate-300 ${
+                  hasCarlsenGames ? "" : "opacity-50 cursor-not-allowed"
+                }`}
+                defaultValue=""
+              >
+                <option value="">
+                  {hasCarlsenGames ? "-- Select a game from Carlsen.pgn --" : "-- Sample games unavailable --"}
+                </option>
+                {carlsenGames.map((game, idx) => (
+                  <option key={idx} value={game.pgn} className="bg-slate-950 text-slate-100">
+                    {game.label}
+                  </option>
+                ))}
+              </select>
+              {!hasCarlsenGames && carlsenError && (
+                <span className="text-[10px] text-amber-400/80">{carlsenError}</span>
+              )}
+            </div>
 
             <div className="flex flex-col gap-2">
               <label className="text-xs font-semibold text-slate-400 tracking-wider">PGN GAME DATA</label>

@@ -69,6 +69,11 @@ class GroundingEvent(BaseModel):
     critique: str = ""
     narrative_snippet: str = ""  # first 200 chars of the narrative at this attempt
 
+class AgentStep(BaseModel):
+    agent_name: str
+    prompt: str
+    response: str
+
 class DeveloperInsight(BaseModel):
     graph_state: str = "finished"
     active_nodes: List[str] = []
@@ -78,6 +83,8 @@ class DeveloperInsight(BaseModel):
     stockfish_raw: List[MoveAnalysis] = []
     retriever_type: str = "hybrid"
     grounding_log: List[GroundingEvent] = []
+    execution_log: List[str] = []
+    agent_steps: List[AgentStep] = []
 
 class CoachReport(BaseModel):
     username: str

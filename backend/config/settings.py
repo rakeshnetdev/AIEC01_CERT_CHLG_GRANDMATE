@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     blunder_cp: int = 300
     gemini_api_key: str = "mock_gemini_key"
     openai_api_key: Optional[str] = None
-    llm_model: str = "gemini/gemini-3-pro"
+    llm_model: str = "gemini/gemini-1.5-flash"
     llm_fallback_model: str = "gpt-4o"
     embed_model: str = "text-embedding-3-small"
     qdrant_url: Optional[str] = None

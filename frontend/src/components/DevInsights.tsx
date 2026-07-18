@@ -1,10 +1,11 @@
-import { Terminal } from "lucide-react";
+import { Terminal, ChevronDown, ChevronRight } from "lucide-react";
+import { useState } from "react";
 import type { CoachReport } from "../lib/api";
 
 interface DevInsightsProps {
   report: CoachReport;
-  activeDevTab: "engine" | "rag" | "prompt" | "grounding";
-  setActiveDevTab: (t: "engine" | "rag" | "prompt" | "grounding") => void;
+  activeDevTab: "engine" | "rag" | "prompt" | "grounding" | "logs" | "agents";
+  setActiveDevTab: (t: "engine" | "rag" | "prompt" | "grounding" | "logs" | "agents") => void;
 }
 
 export function DevInsights({ report, activeDevTab, setActiveDevTab }: DevInsightsProps) {
@@ -51,6 +52,22 @@ export function DevInsights({ report, activeDevTab, setActiveDevTab }: DevInsigh
             }`}
           >
             🛡️ Grounding
+          </button>
+          <button
+            onClick={() => setActiveDevTab("logs")}
+            className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+              activeDevTab === "logs" ? "bg-indigo-500/20 text-indigo-300" : "text-slate-500 hover:text-slate-300"
+            }`}
+          >
+            📜 Trace Logs
+          </button>
+          <button
+            onClick={() => setActiveDevTab("agents")}
+            className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+              activeDevTab === "agents" ? "bg-indigo-500/20 text-indigo-300" : "text-slate-500 hover:text-slate-300"
+            }`}
+          >
+            🤖 Agent I/O
           </button>
         </div>
       </div>
@@ -181,7 +198,94 @@ export function DevInsights({ report, activeDevTab, setActiveDevTab }: DevInsigh
             )}
           </div>
         )}
+        {activeDevTab === "logs" && (
+          <div className="flex flex-col gap-4">
+            <span className="text-xs font-semibold text-slate-400 tracking-wider">GRAPH EXECUTION TRACE LOGS:</span>
+            {(!report.developer_insight.execution_log || report.developer_insight.execution_log.length === 0) ? (
+              <div className="bg-slate-900/60 p-4 rounded-lg border border-white/10 text-xs text-slate-500 italic">
+                No trace logs recorded for this execution.
+              </div>
+            ) : (
+              <div className="bg-slate-950/80 rounded-xl border border-white/5 p-4 max-h-[350px] overflow-y-auto font-mono text-xs flex flex-col gap-2">
+                {report.developer_insight.execution_log.map((logLine, idx) => {
+                  const parts = logLine.split(":");
+                  const prefix = parts[0];
+                  const rest = parts.slice(1).join(":");
+                  return (
+                    <div key={idx} className="leading-relaxed text-slate-300 border-b border-white/5 pb-2 last:border-0 last:pb-0">
+                      <span className="text-indigo-400 font-semibold">[{prefix}]</span>
+                      <span className="text-slate-300">{rest}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+        {activeDevTab === "agents" && (
+          <AgentStepsPanel report={report} />
+        )}
       </div>
+    </div>
+  );
+}
+
+function AgentStepsPanel({ report }: { report: CoachReport }) {
+  const [expandedIdx, setExpandedIdx] = useState<number | null>(null);
+  const steps = report.developer_insight?.agent_steps || [];
+
+  return (
+    <div className="flex flex-col gap-4">
+      <span className="text-xs font-semibold text-slate-400 tracking-wider">AGENT PROMPT / RESPONSE INSPECTOR:</span>
+      {steps.length === 0 ? (
+        <div className="bg-slate-900/60 p-4 rounded-lg border border-white/10 text-xs text-slate-500 italic">
+          No agent steps recorded for this execution.
+        </div>
+      ) : (
+        <div className="flex flex-col gap-3">
+          {steps.map((step, idx) => {
+            const isOpen = expandedIdx === idx;
+            return (
+              <div
+                key={idx}
+                className="rounded-xl border border-indigo-500/20 bg-slate-900/50 overflow-hidden transition-all"
+              >
+                <button
+                  onClick={() => setExpandedIdx(isOpen ? null : idx)}
+                  className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-slate-800/40 transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider">
+                      Step {idx + 1}
+                    </span>
+                    <span className="text-sm font-semibold text-white">{step.agent_name}</span>
+                  </div>
+                  {isOpen
+                    ? <ChevronDown className="w-4 h-4 text-slate-400" />
+                    : <ChevronRight className="w-4 h-4 text-slate-400" />
+                  }
+                </button>
+                {isOpen && (
+                  <div className="px-4 pb-4 flex flex-col gap-3">
+                    <div>
+                      <span className="text-[10px] font-semibold text-sky-400 uppercase tracking-wider">Prompt Sent →</span>
+                      <pre className="mt-1 bg-slate-950/80 p-3 rounded-lg border border-white/5 text-xs text-slate-300 whitespace-pre-wrap max-h-[250px] overflow-y-auto leading-relaxed">
+                        {step.prompt}
+                      </pre>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-semibold text-emerald-400 uppercase tracking-wider">← Response Received</span>
+                      <pre className="mt-1 bg-slate-950/80 p-3 rounded-lg border border-white/5 text-xs text-slate-300 whitespace-pre-wrap max-h-[250px] overflow-y-auto leading-relaxed">
+                        {step.response}
+                      </pre>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
