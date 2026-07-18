@@ -11,8 +11,11 @@
 | Document | Purpose | Location |
 | :--- | :--- | :--- |
 | 📋 **Full Deliverables** | Core challenge deliverables and self-assessment checklists | [docs/Deliverables.md](./docs/Deliverables.md) |
-| 🏗️ **System Architecture** | Subsystem flowcharts and deployment topologies | [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) |
+| 🏗️ **System Architecture** | Subsystem flowcharts, request-lifecycle sequences, and deployment topologies | [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) |
 | 🗺️ **Implementation Plan** | Chronological development phases and engineering logs | [docs/PLAN.md](./docs/PLAN.md) |
+| 🖼️ **Diagrams** | Every mermaid diagram referenced above, as standalone files | [docs/diagrams/](./docs/diagrams/) |
+| 📊 **Retriever Evaluation** | Hybrid RRF vs. dense vs. BM25 benchmark, bucketed and unbucketed | [docs/retriever_evaluation_report.md](./docs/retriever_evaluation_report.md) |
+| 🧪 **Synthetic Data & Evals** | What test data the eval harness uses and how | [docs/synthetic_data_and_eval_design.md](./docs/synthetic_data_and_eval_design.md) |
 
 ---
 
@@ -71,7 +74,7 @@ This system follows a **5-layer agentic architecture**:
 | Layer | Purpose | Key Modules |
 | :--- | :--- | :--- |
 | **1. Configuration** | Handles settings, API gateways, and environment overrides. | `backend/config/settings.py` |
-| **2. Storage** | Manages vector documents, learner memory, and session state. | `backend/coach.db`, `backend/data/corpus/` |
+| **2. Storage** | Vector documents plus an engine/HTTP results cache. Conversation memory is in-process (LangGraph checkpointer), not in this database yet — see caveat below. | `backend/coach.db`, `backend/data/corpus/` |
 | **3. Analytical Tools** | Computes engine analytics and parses position legalities. | Stockfish, `python-chess` |
 | **4. Retrieval (RAG)** | Fetches context using dense vectors + sparse BM25 fused via RRF, filtered per corpus bucket (`rules` / `strategies`). | `backend/src/coach/rag/` |
 | **5. Orchestration** | Runs the multi-agent graph (router → strategy/rules specialists → synthesizer) and the Grounding Guard loop. | `backend/src/coach/agent/graph.py` |
@@ -81,7 +84,14 @@ specialists each answer from their own corpus bucket; a **synthesizer** fuses th
 single answer the user reads; the **grounding guard** re-checks every move named and loops back with a
 critique if anything is unverified. The router is deliberately cheap — it decides deterministically
 wherever the state already implies the next hop, and calls the LLM only for genuine intent
-classification (see [final_docs/change_document.md](./final_docs/change_document.md)).
+classification: **0 LLM calls on `/review`, 1 on `/chat`** (before/after diagrams and the full
+end-to-end request sequence: [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) §4/§4a).
+
+> **Memory caveat.** "Memory" today means conversation-scoped state (a LangGraph checkpointer) that
+> lets a review and its follow-up chat share context within one session — it does not survive a
+> server restart, and a new session has no link to a user's previous ones. A durable, cross-session
+> learner profile is the intended design and a planned next step, not something shipped today. See
+> [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) §6 and [docs/Deliverables.md](./docs/Deliverables.md) §8.5.
 
 ---
 
@@ -108,9 +118,13 @@ The project is structured as a monorepo split into decoupled frontend and backen
 ├── docs/                     # Final root-level deliverables, system architecture, & project plans
 │   ├── Deliverables.md       # Full project deliverables & self-assessment evidence
 │   ├── ARCHITECTURE.md       # High-level component & infrastructure designs
-│   └── PLAN.md               # Chronological project milestones
+│   ├── PLAN.md               # Chronological project milestones
+│   ├── retriever_evaluation_report.md      # Hybrid RRF vs. dense vs. BM25 benchmark
+│   ├── synthetic_data_and_eval_design.md   # What eval data exists & how it's used
+│   └── diagrams/              # Every mermaid diagram, as standalone files
 │
-└── final_docs/               # Submodule directory maintaining official documentation sources
+└── final_docs/               # Submodule (own git history) — per-phase learning log, metrics vs.
+                               # rubric, grading-rubric.md, and the graded write-up
 ```
 
 ---
@@ -121,7 +135,7 @@ The project is structured as a monorepo split into decoupled frontend and backen
 | :--- | :--- | :--- |
 | **LLM Gateway** | LiteLLM → Gemini 1.5 Flash | Narrates verified chess analytics (GPT-4o fallback) |
 | **Orchestration** | LangGraph 0.2+ | Multi-agent router → specialist → synthesizer team; manages multi-turn memory & validation retry loops |
-| **Local Memory** | SQLite + python-chess | Checkpoints user profiles & validates board move legality |
+| **Conversation Memory** | LangGraph `MemorySaver` + python-chess | In-process, session-scoped checkpointing (not yet durable — see caveat above) & board move legality validation |
 | **Vector DB** | ChromaDB + BM25 | Hybrid RRF RAG over a dual-corpus bucketed index (`rules` vs. `strategies`) |
 | **Frontend UI** | React + Vite + TS | High-fidelity dark mode analysis dashboard |
 | **Evals** | pytest + Ragas | Systematic metrics-driven blunder and RAG test harness |
@@ -140,31 +154,31 @@ uv run pytest tests/                        # Run unit, integration, and guardra
 
 ### Evaluation Targets vs. Measured
 
-Last measured from `evals/report.py` against a rebuilt, independent-oracle harness (results on disk in `evals/report.json`; full audit trail in `final_docs/synthetic_data_and_eval_design.md`).
+Last measured from `evals/report.py` against a rebuilt, independent-oracle harness (results on disk in `evals/report.json`; overview in [docs/synthetic_data_and_eval_design.md](./docs/synthetic_data_and_eval_design.md)).
 
 | Metric | Target | Measured | Status |
 | :--- | :--- | :--- | :--- |
-| Detection F1 (Blunders) | `≥ 0.90` | **0.9467** | ✅ Real — scored against an independent depth-24 Stockfish oracle (n=151) |
-| Severity Accuracy | `≥ 0.85` | **0.9073** | ✅ Real (n=151) |
-| Illegal / Hallucinated Move Rate | `0%` | **0.0000%** | ✅ Real (n=3 moves checked) |
-| RAGAS Faithfulness | `≥ 0.85` | **0.8500** | ✅ Real (n=2) |
+| Detection F1 (Blunders) | `≥ 0.90` | **0.9586** | ✅ Real — scored against an independent depth-24 Stockfish oracle (n=151) |
+| Severity Accuracy | `≥ 0.85` | **0.8940** | ✅ Real (n=151) |
+| Illegal / Hallucinated Move Rate | `0%` | **0.0000%** | ✅ Real (n=2 moves checked) |
+| RAGAS Faithfulness | `≥ 0.85` | **0.75** | ⚠️ Below target (n=2 — thin sample, see caveat) |
 | LLM-Judge Coaching Quality | `≥ 4.0 / 5` | **4.00 / 5** | ✅ Real (n=3) |
 
 > **These numbers replace an earlier scorecard that looked identical (F1/severity `1.0`, faithfulness `1.0`) but measured nothing** — the dataset's ground truth was produced by the same function the harness then graded, and faithfulness defaulted to a passing score whenever no context was retrieved. The eval suite was rebuilt around an independent oracle; see the falsification test below for proof it can now actually fail.
 
-* **Model under test is GPT-4o, not Gemini 1.5 Flash.** `GEMINI_API_KEY` is empty in `backend/.env`, so the documented primary (`gemini/gemini-1.5-flash`) is not reachable and LiteLLM's configured GPT-4o fallback serves all traffic. Every LLM-dependent score here describes GPT-4o.
+* **Model under test is GPT-4o, not Gemini 1.5 Flash — confirmed, not just a missing key.** `gemini/gemini-1.5-flash`, the documented primary, now returns a hard `404 Not Found` from Google's live API regardless of key — the model has been retired. Every LLM call falls through LiteLLM's configured fallback to GPT-4o, which serves all traffic. Every LLM-dependent score here describes GPT-4o's behaviour, and `RAGAS Faithfulness` dropping below target only became visible once this was confirmed and the harness was re-run against the real fallback path instead of erroring out silently.
 
 * **Detection F1 and Severity Accuracy are now measured against an independent oracle, not the classifier under test.** `evals/generate_synthetic.py` no longer imports `calculate_cpl_and_label`; ground truth comes from Stockfish at **depth 24** plus a reference CPL/severity rule implemented from the spec. `evals/report.py` re-analyses all **151** positions with the *production* engine at depth 16 and production classifier, and scores the result against the oracle's labels. The dataset covers all four severity classes, both colours (56 black-to-move rows — the old harness silently dropped every one), and six edge cases (promotion, castling, en passant, forced mate, stalemate trap, SAN disambiguation).
 
 * **Proof the metric can now fail:** deliberately corrupting the severity thresholds (`INACCURACY_CP=10000 MISTAKE_CP=20000 BLUNDER_CP=30000`, so nothing can be classified a mistake) collapses Detection F1 from `0.9529` to **`0.1875`** and Severity Accuracy from `0.8940` to **`0.4238`**. The old harness reported `1.0` under any mutation, because it compared a deterministic function to itself.
 
-* **Known caveat — engine non-determinism.** Two identical runs of the same dataset at the same depth produced slightly different labels (F1 `0.9529` vs `0.9467`; severity `0.8940` vs `0.9073`). This is a real violation of the "same game + depth ⇒ same labels" rule, most likely Stockfish threading, and was invisible under the old circular metric because a function compared to itself is always perfectly reproducible. Read detection figures with a **±0.01 band** until this is pinned (candidate fix: `Threads=1`).
+* **Known caveat — engine non-determinism.** Three runs of the same dataset at the same depth have now produced different labels each time (F1 `0.9467` / `0.9529` / `0.9586`; severity `0.9073` / `0.8940` / `0.8940`). This is a real violation of the "same game + depth ⇒ same labels" rule, most likely Stockfish threading, and was invisible under the old circular metric because a function compared to itself is always perfectly reproducible. Read detection figures with a **±0.02 band** (widened from an earlier ±0.01) until this is pinned (candidate fix: `Threads=1`).
 
-* **RAGAS Faithfulness `0.8500` is a genuine measurement — the earlier `1.0` and `0.30` were both harness artifacts.** The eval `Game` is now rebuilt from `fen_before` via `[SetUp]`/`[FEN]` PGN headers (so black-to-move positions parse and mid-game context is retrieved for the right board), and the judge is given the coach's **engine facts alongside the RAG context** — the old prompt penalised the coach for correctly narrating Stockfish-derived facts that by definition aren't in the corpus. The coach was never unfaithful; the measurement was broken. Every run now prints an explicit not-measured accounting (`judge_failures`, `pipeline_failures`, `rows_without_rag_context`) instead of silently defaulting to a pass.
+* **RAGAS Faithfulness `0.75` is a genuine measurement, now below its own `≥0.85` target — the earlier `1.0` and `0.30` were both harness artifacts, and an earlier "passing" `0.85` was measured against GPT-4o without realizing Gemini was unreachable, not a Gemini result.** The eval `Game` is rebuilt from `fen_before` via `[SetUp]`/`[FEN]` PGN headers (so black-to-move positions parse and mid-game context is retrieved for the right board), and the judge is given the coach's **engine facts alongside the RAG context** — the old prompt penalised the coach for correctly narrating Stockfish-derived facts that by definition aren't in the corpus. At n=2 this could be sampling noise rather than a confirmed regression; every run prints an explicit not-measured accounting (`judge_failures`, `pipeline_failures`, `rows_without_rag_context`) instead of silently defaulting to a pass.
 
 * **Illegal / Hallucinated Move Rate and Coaching Quality are now measured without silent defaults.** A failed judge call reports `null` ("not measured"), never a fabricated `4`.
 
-**Retriever comparison** (`evals/compare_retrievers.py`; full report in `final_docs/retriever_evaluation_report.md`) — rewritten to score all three strategies through the production `retrieve_context(..., bucket=)` against **135 queries derived from the corpus itself**, including LLM-paraphrased queries that reword rather than quote the source text:
+**Retriever comparison** (`evals/compare_retrievers.py`; full report in [docs/retriever_evaluation_report.md](./docs/retriever_evaluation_report.md)) — rewritten to score all three strategies through the production `retrieve_context(..., bucket=)` against **135 queries derived from the corpus itself**, including LLM-paraphrased queries that reword rather than quote the source text:
 
 | Retriever | Hit Rate @3 | MRR | Avg Latency |
 | :--- | :--- | :--- | :--- |
@@ -178,4 +192,5 @@ Last measured from `evals/report.py` against a rebuilt, independent-oracle harne
 * **No relevance floor.** All three retrievers return `k` results even for out-of-corpus queries (tested against Go, football, backgammon) — 3/3 false positives each. Retrieval never abstains.
 * Router intent/fast-path, guardrail refusals, and memory persistence have no eval coverage yet.
 * Raise the judged-layer sample size above the current `--sample 3` default; cheap to do, costs money to run.
-* Configure a Gemini key (or formally adopt GPT-4o as primary) so the evaluated model matches the documented one.
+* Pick a currently-live primary model — `gemini/gemini-1.5-flash` is retired at Google's API, so "configure a Gemini key" won't fix it; either a current Gemini model id or formally adopting GPT-4o as primary is needed so the evaluated model matches the documented one.
+* Re-run the judged layer at a larger sample once a live primary model is settled, to confirm whether the sub-target faithfulness score (`0.75`) holds up or was n=2 noise.
