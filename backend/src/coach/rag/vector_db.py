@@ -1,8 +1,10 @@
 import os
 import logging
-import chromadb
-from chromadb.utils import embedding_functions
 from config.settings import get_settings
+
+# NOTE: chromadb is imported lazily inside the functions below. At module scope it added
+# ~0.9s to every import of coach.rag.pipeline, which sits on coach.agent.graph's import
+# path and so slowed `langgraph dev` startup. Nothing here touches chromadb at import time.
 
 logger = logging.getLogger(__name__)
 
@@ -11,6 +13,8 @@ def _get_embedding_function():
     
     Falls back to Chroma's local DefaultEmbeddingFunction if the OpenAI API Key is not present.
     """
+    from chromadb.utils import embedding_functions
+
     settings = get_settings()
     api_key = settings.openai_api_key or os.environ.get("OPENAI_API_KEY")
     
@@ -31,6 +35,8 @@ def get_collection(persist_dir: str):
     Handles embedding function conflicts by loading the collection without 
     specifying the function if a mismatch is detected.
     """
+    import chromadb
+
     client = chromadb.PersistentClient(path=persist_dir)
     embedding_func = _get_embedding_function()
     try:
@@ -47,6 +53,8 @@ def get_collection(persist_dir: str):
 
 def reset_collection(persist_dir: str):
     """Deletes and recreates the ChromaDB collection to clear previous documents."""
+    import chromadb
+
     client = chromadb.PersistentClient(path=persist_dir)
     try:
         client.delete_collection(name="chess_rag")
