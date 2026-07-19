@@ -104,6 +104,7 @@ flowchart TD
     U["User input: pasted PGN / question"] --> FETCH[fetch_and_analyse]
     FETCH --> ROUTE{Router Agent}
 
+    ROUTE -- "small talk (0 LLM calls)" --> DONE([Canned reply — ends turn])
     ROUTE -- "delegate (strategy)" --> STRAT[strategy_node]
     ROUTE -- "delegate (rules)" --> RULES[rules_node]
     ROUTE -- "done / direct" --> SYNTH[synthesizer_node]
@@ -132,6 +133,7 @@ The multi-agent StateGraph coordinates sequential worker node execution and grou
    * *Output:* Populates `analyses` and `game` fields in the state.
 2. **`router_agent`:**
    * *What it does:* Inspects conversation history and game state to determine whether rules questions or strategy questions need specialist delegation. Bypasses LLM routing deterministically if findings are already present.
+   * *Small-talk short-circuit:* A message that is *purely* a greeting, thanks, or farewell ("hi", "thanks", "bye") is matched against a deterministic allowlist and answered from a template — 0 LLM calls, no specialist, and no grounding guard, since a canned reply names no moves. Matching is whole-message, so a real question that merely opens politely ("Hi, why was my move a blunder?") still reaches normal classification.
 3. **`strategy_node`:**
    * *What it does:* Queries the `strategies` RAG database for tactical concepts and positional motifs, executing a specialized strategy coaching prompt.
 4. **`rules_node`:**

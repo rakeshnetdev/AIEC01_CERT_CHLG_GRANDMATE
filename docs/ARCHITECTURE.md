@@ -78,6 +78,7 @@ flowchart TD
     U["User input: pasted PGN / question"] --> FETCH[fetch_and_analyse]
     FETCH --> ROUTE{Router Agent}
 
+    ROUTE -- "small talk (0 LLM calls)" --> DONE([Canned reply — ends turn])
     ROUTE -- "delegate (strategy)" --> STRAT[strategy_node]
     ROUTE -- "delegate (rules)" --> RULES[rules_node]
     ROUTE -- "done / direct" --> SYNTH[synthesizer_node]

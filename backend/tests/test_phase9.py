@@ -146,3 +146,52 @@ def test_router_defaults_to_strategy_on_initial_review(mock_chat, mock_retrieve_
     assert not any(
         call.kwargs.get("bucket") == "rules" for call in mock_retrieve_context.call_args_list
     )
+
+
+def _greeting_inputs(message, thread):
+    return {
+        "messages": [HumanMessage(content=message)],
+        "username": "user", "source": "upload", "pgn": "1. e4 e5 *",
+        "game": Game(game_id="g1", source="upload", pgn="1. e4 e5 *", white="a", black="b",
+                     user_color="white", result="*"),
+        "analyses": [], "rag_context": "", "output": ""
+    }, {"configurable": {"thread_id": thread}}
+
+
+@patch("coach.agent.graph.retrieve_context")
+@patch("coach.agent.graph.chat")
+def test_small_talk_short_circuits_with_zero_llm_calls(mock_chat, mock_retrieve_context):
+    # A bare greeting should never reach the LLM, a specialist, or the grounding guard.
+    mock_retrieve_context.return_value = []
+    graph = compile_coach_graph()
+
+    inputs, config = _greeting_inputs("Hi", "test_small_talk_hi")
+    final_state = graph.invoke(inputs, config=config)
+
+    mock_chat.assert_not_called()
+    mock_retrieve_context.assert_not_called()
+    assert "dig into your game" in final_state["output"]
+    # The canned reply must be the last AIMessage, since /chat reads the reply from there.
+    assert isinstance(final_state["messages"][-1], AIMessage)
+    assert final_state["messages"][-1].content == final_state["output"]
+
+
+@patch("coach.agent.graph.retrieve_context")
+@patch("coach.agent.graph.chat")
+def test_polite_opener_still_reaches_classification(mock_chat, mock_retrieve_context):
+    # Regression guard: the small-talk allowlist must not swallow a real question that
+    # merely opens politely. This is the failure mode that would silently break coaching.
+    # router classification -> strategy_node -> (loop-back fast-path) rules_node -> synthesizer.
+    # The rules hop is today's sequential loop-back behaviour; step 4 replaces it.
+    mock_chat.side_effect = ["strategy", "Strategy findings.", "Rules findings.", "Compiled answer."]
+    mock_retrieve_context.return_value = [
+        {"id": "s1", "text": "Sicilian ideas.",
+         "metadata": {"bucket": "strategies", "source": "strategy.md"}}
+    ]
+    graph = compile_coach_graph()
+
+    inputs, config = _greeting_inputs("Hi, why was my move a blunder?", "test_polite_opener")
+    final_state = graph.invoke(inputs, config=config)
+
+    assert mock_chat.called, "a real question must still reach LLM classification"
+    assert final_state["output"] == "Compiled answer."

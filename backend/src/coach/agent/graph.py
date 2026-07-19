@@ -308,6 +308,57 @@ def should_continue_guard(state: CoachState) -> str:
     return "continue"
 
 
+# Small talk the coach can answer without an LLM call. Matching is deliberately
+# whole-message (see _match_small_talk): a question that merely *opens* politely, like
+# "Hi, why was my move a blunder?", must still reach real classification.
+_SMALL_TALK_REPLIES = {
+    "greeting": (
+        "Hey! I'm here whenever you want to dig into your game — ask me about a "
+        "specific move, a mistake, or the opening, and I'll walk you through it."
+    ),
+    "thanks": (
+        "You're welcome! Happy to keep going whenever you want to look at another "
+        "moment in the game."
+    ),
+    "farewell": "Good luck in your next game — come back any time you want to review it!",
+}
+
+_SMALL_TALK_PHRASES = {
+    "greeting": {
+        "hi", "hii", "hiya", "hello", "helo", "hey", "heya", "yo", "sup", "howdy",
+        "good morning", "good afternoon", "good evening", "greetings",
+        "how are you", "how are you doing", "how r u", "how are u", "hows it going",
+        "how is it going", "whats up", "hi there", "hello there", "hey there",
+    },
+    "thanks": {
+        "thanks", "thank you", "thanx", "thx", "ty", "cheers", "thanks a lot",
+        "thank you so much", "thanks so much", "many thanks", "appreciate it",
+        "ok thanks", "okay thanks", "great thanks", "cool thanks", "nice thanks",
+        "got it thanks", "perfect thanks", "awesome thanks", "thanks buddy",
+    },
+    "farewell": {
+        "bye", "byee", "goodbye", "good bye", "see you", "see ya", "cya",
+        "good night", "goodnight", "gtg", "talk later", "see you later",
+    },
+}
+
+
+def _match_small_talk(text: str) -> Optional[str]:
+    """Returns a canned reply if the message is *purely* a greeting/thanks/farewell.
+
+    Matches on the whole normalised message rather than a prefix, so genuine questions
+    that happen to start politely still fall through to real intent classification.
+    """
+    normalised = re.sub(r"[^a-z\s]", "", (text or "").lower())
+    normalised = re.sub(r"\s+", " ", normalised).strip()
+    if not normalised:
+        return None
+    for category, phrases in _SMALL_TALK_PHRASES.items():
+        if normalised in phrases:
+            return _SMALL_TALK_REPLIES[category]
+    return None
+
+
 def router_agent_node(state: CoachState) -> dict:
     """Coordinates and classifies the user intent to delegate to specialists."""
     logger.info("Running router_agent node")
@@ -335,6 +386,26 @@ def router_agent_node(state: CoachState) -> dict:
                 "response": "strategy (fast-path default)"
             }]
         }
+
+    # Pure small talk ("hi", "thanks") — answer from a template and end the turn here.
+    # No LLM call, no specialist, and no grounding guard: a canned reply names no moves,
+    # so there is nothing for the legality check to verify.
+    last_human = next((m for m in reversed(messages) if isinstance(m, HumanMessage)), None)
+    if last_human is not None:
+        canned = _match_small_talk(last_human.content)
+        if canned:
+            logger.info("Router matched small talk. Replying from template with 0 LLM calls.")
+            return {
+                "delegated_specialist": "small_talk",
+                "output": canned,
+                "messages": [AIMessage(content=canned)],
+                "execution_logs": ["router_agent: Small talk matched. Canned reply, 0 LLM calls, skipped synthesis and grounding."],
+                "agent_steps": [{
+                    "agent_name": "Router Agent",
+                    "prompt": f"(Deterministic small-talk match on: {last_human.content!r})",
+                    "response": "small talk — canned reply, no LLM call"
+                }]
+            }
 
     has_strategy = state.get("strategy_findings") is not None
     has_rules = state.get("rules_findings") is not None
@@ -618,6 +689,9 @@ def should_delegate(state: CoachState) -> str:
         return "strategy_node"
     elif specialist == "rules":
         return "rules_node"
+    elif specialist == "small_talk":
+        # Router already wrote the canned reply — nothing left to synthesise or ground.
+        return END
     else:
         return "synthesizer_node"
 
@@ -645,7 +719,8 @@ def compile_coach_graph():
         {
             "strategy_node": "strategy_node",
             "rules_node": "rules_node",
-            "synthesizer_node": "synthesizer_node"
+            "synthesizer_node": "synthesizer_node",
+            END: END
         }
     )
     
