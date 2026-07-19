@@ -28,13 +28,10 @@ sequenceDiagram
     API->>Graph: coach_graph.invoke(inputs, config={thread_id})
     Note over Graph: fetch_and_analyse_node
     Graph->>Eng: analyze_game() -> per-move centipawn loss + severity
-    Note over Graph: router_agent_node (no HumanMessage yet -> fast-path, 0 LLM calls)
+    Note over Graph: router_agent_node (no messages yet, dispatches to strategy, 0 LLM calls)
     Graph->>RAG: strategy_node: retrieve_context(bucket="strategies")
     Graph->>GW: strategy_node: chat() -> strategy findings
-    Note over Graph: router_agent_node (strategy done -> fast-path to rules, 0 calls)
-    Graph->>RAG: rules_node: retrieve_context(bucket="rules")
-    Graph->>GW: rules_node: chat() -> rules findings
-    Note over Graph: router_agent_node (both gathered -> fast-path to synthesizer, 0 calls)
+    Note over Graph: rules_node does not run on a plain review (no rules question)
     Graph->>GW: synthesizer_node: chat() -> fused narrative
     Graph->>GW: grounding_guard_node: chat() (LLM-as-a-Judge, initial review)
     alt rejected, retry_count < 3
@@ -63,19 +60,23 @@ sequenceDiagram
 
     UI->>Client: handleSendChat() (ChatPanel onSubmit) -> chatMessage(payload)
     Client->>API: HTTP POST /chat {message, session_id}
-    API->>API: validate_request() (guardrail; off-topic -> short-circuit reply)
+    API->>API: validate_request() (guardrail, off-topic short-circuits)
     API->>Graph: coach_graph.get_state(config={thread_id})
     alt no game loaded in this thread
         API->>Client: {"reply": "Please load and analyze a game first"} (no graph invoke)
     else game loaded
         API->>Graph: coach_graph.invoke({messages:[HumanMessage]}, config)
-        Note over Graph: router_agent_node (HumanMessage, no findings yet -> 1 LLM call)
-        Graph->>GW: router_agent_node: chat() -> classify "strategy" or "rules"
-        Graph->>RAG: delegated specialist: retrieve_context(bucket=...)
-        Graph->>GW: delegated specialist: chat() -> findings
-        Note over Graph: router_agent_node (one specialist done -> fast-path to the other, 0 calls)
-        Graph->>GW: second specialist: chat() -> findings
-        Graph->>GW: synthesizer_node: chat() -> fused reply
+        Note over Graph: router_agent_node, entered once (1 LLM call to classify)
+        alt pure small talk
+            Note over Graph: matched deterministically, canned reply, 0 LLM calls
+            Note over Graph: skips synthesis and the grounding guard entirely
+        else a real question
+            Graph->>GW: router_agent_node: chat() -> strategy, rules, both, or neither
+            Graph->>RAG: dispatched specialists: retrieve_context(bucket=...)
+            Note over Graph: the both case runs strategy_node and rules_node in parallel
+            Graph->>GW: dispatched specialists: chat() -> findings
+            Graph->>GW: synthesizer_node: chat() -> fused reply
+        end
         Note over Graph: grounding_guard_node forced to deterministic mode (chat follow-up)
         Graph->>API: returns final_state
         API->>API: extract last AIMessage as reply + rebuild DeveloperInsight
