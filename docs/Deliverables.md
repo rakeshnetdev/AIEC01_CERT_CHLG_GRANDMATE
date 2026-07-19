@@ -102,8 +102,7 @@ The orchestrator routes the user's intent to review games, analyze specific posi
 ```mermaid
 flowchart TD
     U["User input: pasted PGN / question"] --> FETCH[fetch_and_analyse]
-    FETCH --> RAG_C[retrieve_rag_context]
-    RAG_C --> ROUTE{Router Agent}
+    FETCH --> ROUTE{Router Agent}
 
     ROUTE -- "delegate (strategy)" --> STRAT[strategy_node]
     ROUTE -- "delegate (rules)" --> RULES[rules_node]
@@ -131,17 +130,15 @@ The multi-agent StateGraph coordinates sequential worker node execution and grou
 1. **`fetch_and_analyse` (Entry Node):**
    * *What it does:* Receives the user's uploaded PGN and runs the Stockfish engine to analyze each move, calculating centipawn loss and labeling mistakes (blunders, mistakes, inaccuracies).
    * *Output:* Populates `analyses` and `game` fields in the state.
-2. **`retrieve_rag_context`:**
-   * *What it does:* Pre-populates the general game context (such as opening metadata) before routing.
-3. **`router_agent`:**
+2. **`router_agent`:**
    * *What it does:* Inspects conversation history and game state to determine whether rules questions or strategy questions need specialist delegation. Bypasses LLM routing deterministically if findings are already present.
-4. **`strategy_node`:**
+3. **`strategy_node`:**
    * *What it does:* Queries the `strategies` RAG database for tactical concepts and positional motifs, executing a specialized strategy coaching prompt.
-5. **`rules_node`:**
+4. **`rules_node`:**
    * *What it does:* Queries the `rules` RAG database for official rules, stalemate, and legality validations, including the FIDE Laws of Chess PDF ingested page-by-page.
-6. **`synthesizer_node`:**
+5. **`synthesizer_node`:**
    * *What it does:* Consolidated responder that combines strategy and rules findings into a unified, user-friendly markdown narrative.
-7. **`grounding_guard`:**
+6. **`grounding_guard`:**
    * *What it does:* Inspects the narrative draft. The initial `/review` uses the LLM-as-a-Judge check; a chat follow-up (a prior AI turn already exists in state) always forces the fast deterministic python-chess legality check instead, regardless of whether the question was about rules or strategy.
    * *Flow logic:*
      * **Success:** Routes to `END` to deliver the final report to the user interface.
@@ -189,7 +186,7 @@ The Grandmate application is built as a completely decoupled architecture, commu
 ### 4.2 Backend Stack (FastAPI + Python)
 * **What it does:** Executes the heavy analytical logic, manages agent memory, retrieves context, and validates narration outputs.
 * **Key Features:**
-  * **LangGraph Multi-Agent Orchestration:** Coordinates the stateful workflow nodes (`fetch_and_analyse` → `retrieve_rag_context` → `router_agent` → `strategy_node` / `rules_node` → `synthesizer_node` → `grounding_guard`), with specialists looping back to the router so it can sequence them, and the router deciding without an LLM call wherever state already implies the next hop.
+  * **LangGraph Multi-Agent Orchestration:** Coordinates the stateful workflow nodes (`fetch_and_analyse` → `router_agent` → `strategy_node` / `rules_node` → `synthesizer_node` → `grounding_guard`), with specialists looping back to the router so it can sequence them, and the router deciding without an LLM call wherever state already implies the next hop.
   * **Dual-Mode Grounding Guard:**
     * *Option A (Deterministic):* Scans narrative outputs using SAN regex and checks move validity on `python-chess.Board` structures. Always active for chat messages (~5ms execution).
     * *Option B (LLM-as-a-Judge):* Evaluates the strategic correctness of the output text (e.g., detecting if a pin is mislabeled as a fork) and outputs JSON feedback to trigger rewrite loops.

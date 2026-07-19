@@ -304,7 +304,7 @@ def review_game(request: ReviewRequest):
             
     dev_insight = DeveloperInsight(
         graph_state="finished",
-        active_nodes=["fetch_and_analyse", "retrieve_rag_context", "router_agent", "strategy_node", "rules_node", "synthesizer_node", "grounding_guard"],
+        active_nodes=["fetch_and_analyse", "router_agent", "strategy_node", "rules_node", "synthesizer_node", "grounding_guard"],
         rag_queries=rag_queries,
         rag_context=rag_context,
         raw_prompt=system_prompt,

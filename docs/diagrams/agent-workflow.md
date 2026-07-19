@@ -6,8 +6,7 @@ Referenced from [`ARCHITECTURE.md` §4](../ARCHITECTURE.md#4-agent-workflow-cont
 ```mermaid
 flowchart TD
     U["User input: pasted PGN / question"] --> FETCH[fetch_and_analyse]
-    FETCH --> RAG_C[retrieve_rag_context]
-    RAG_C --> ROUTE{Router Agent}
+    FETCH --> ROUTE{Router Agent}
 
     ROUTE -- "delegate (strategy)" --> STRAT[strategy_node]
     ROUTE -- "delegate (rules)" --> RULES[rules_node]

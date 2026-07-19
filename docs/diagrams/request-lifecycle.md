@@ -28,8 +28,6 @@ sequenceDiagram
     API->>Graph: coach_graph.invoke(inputs, config={thread_id})
     Note over Graph: fetch_and_analyse_node
     Graph->>Eng: analyze_game() -> per-move centipawn loss + severity
-    Note over Graph: retrieve_rag_context_node
-    Graph->>RAG: retrieve_context() (theme-seeded, pre-fetch)
     Note over Graph: router_agent_node (no HumanMessage yet -> fast-path, 0 LLM calls)
     Graph->>RAG: strategy_node: retrieve_context(bucket="strategies")
     Graph->>GW: strategy_node: chat() -> strategy findings

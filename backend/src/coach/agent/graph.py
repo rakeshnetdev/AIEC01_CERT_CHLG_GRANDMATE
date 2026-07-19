@@ -150,49 +150,6 @@ def fetch_and_analyse_node(state: CoachState) -> dict:
     }
 
 
-def retrieve_rag_context_node(state: CoachState) -> dict:
-    """Retrieves tactical concept notes using the custom RAG pipeline."""
-    logger.info("Running retrieve_rag_context node")
-    game = state.get("game")
-    analyses = state.get("analyses", [])
-    retriever_type = state.get("retriever_type") or get_settings().retriever_type
-    
-    if not analyses:
-        return {}
-        
-    # Query using tactical themes identified
-    queries = []
-    for ma in analyses:
-        if ma.label != "ok" and ma.theme:
-            queries.append(ma.theme)
-            
-    if game and game.opening_name:
-        queries.append(game.opening_name)
-        
-    seen = set()
-    unique_queries = []
-    for q in queries:
-        if q not in seen:
-            seen.add(q)
-            unique_queries.append(q)
-            
-    settings = get_settings()
-    rag_parts = []
-    for q in unique_queries[:3]:
-        try:
-            results = retrieve_context(q, persist_dir=settings.chroma_db_path, limit=1, retriever_type=retriever_type)
-            for r in results:
-                rag_parts.append(r["text"])
-        except Exception as e:
-            logger.error(f"Error querying RAG for '{q}': {e}")
-            
-    rag_context = "\n\n".join(rag_parts)
-    return {
-        "rag_context": rag_context,
-        "execution_logs": [f"retrieve_rag_context: Pre-retrieved general game concepts. Queries: {unique_queries[:3]}. Retrieved {len(rag_parts)} RAG blocks."]
-    }
-
-
 def check_deterministic_grounding(output: str, game: Optional[Game], analyses: List[MoveAnalysis]) -> tuple[bool, str]:
     """Scans text output to ensure all mentioned chess moves are legal in the game's context."""
     # Matches patterns like "Nf6", "e4", "1.e4", "Bxh7+", "O-O"
@@ -671,7 +628,6 @@ def compile_coach_graph():
     
     # Add nodes
     workflow.add_node("fetch_and_analyse", fetch_and_analyse_node)
-    workflow.add_node("retrieve_rag_context", retrieve_rag_context_node)
     workflow.add_node("router_agent", router_agent_node)
     workflow.add_node("strategy_node", strategy_node)
     workflow.add_node("rules_node", rules_node)
@@ -680,8 +636,7 @@ def compile_coach_graph():
     
     # Set execution edges
     workflow.set_entry_point("fetch_and_analyse")
-    workflow.add_edge("fetch_and_analyse", "retrieve_rag_context")
-    workflow.add_edge("retrieve_rag_context", "router_agent")
+    workflow.add_edge("fetch_and_analyse", "router_agent")
     
     # Router conditional edges
     workflow.add_conditional_edges(

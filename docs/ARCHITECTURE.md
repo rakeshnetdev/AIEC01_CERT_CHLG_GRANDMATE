@@ -76,8 +76,7 @@ flowchart TB
 ```mermaid
 flowchart TD
     U["User input: pasted PGN / question"] --> FETCH[fetch_and_analyse]
-    FETCH --> RAG_C[retrieve_rag_context]
-    RAG_C --> ROUTE{Router Agent}
+    FETCH --> ROUTE{Router Agent}
 
     ROUTE -- "delegate (strategy)" --> STRAT[strategy_node]
     ROUTE -- "delegate (rules)" --> RULES[rules_node]
@@ -229,8 +228,6 @@ sequenceDiagram
     API->>Graph: coach_graph.invoke(inputs, config={thread_id})
     Note over Graph: fetch_and_analyse_node
     Graph->>Eng: analyze_game() -> per-move centipawn loss + severity
-    Note over Graph: retrieve_rag_context_node
-    Graph->>RAG: retrieve_context() (theme-seeded, pre-fetch)
     Note over Graph: router_agent_node (no HumanMessage yet -> fast-path, 0 LLM calls)
     Graph->>RAG: strategy_node: retrieve_context(bucket="strategies")
     Graph->>GW: strategy_node: chat() -> strategy findings
