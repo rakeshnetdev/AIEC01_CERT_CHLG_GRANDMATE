@@ -106,9 +106,43 @@ def test_should_delegate_helper():
     # Test should_delegate edge routing function
     state_strategy = {"delegated_specialist": "strategy"}
     assert should_delegate(state_strategy) == "strategy_node"
-    
+
     state_rules = {"delegated_specialist": "rules"}
     assert should_delegate(state_rules) == "rules_node"
-    
+
     state_none = {"delegated_specialist": None}
     assert should_delegate(state_none) == "synthesizer_node"
+
+
+@patch("coach.agent.graph.retrieve_context")
+@patch("coach.agent.graph.chat")
+def test_router_defaults_to_strategy_on_initial_review(mock_chat, mock_retrieve_context):
+    # messages=[] is what /review actually sends (backend/app.py) — this is the real bug path:
+    # the router used to skip routing entirely here, so neither specialist ever ran.
+    mock_chat.side_effect = [
+        "Strategic findings for the position.",  # strategy_node
+        "Compiled review response.",  # synthesizer_node
+    ]
+    mock_retrieve_context.return_value = [
+        {"id": "s1", "text": "Sicilian Defense strategic ideas.",
+         "metadata": {"bucket": "strategies", "source": "strategy.md"}}
+    ]
+
+    graph = compile_coach_graph()
+
+    inputs = {
+        "messages": [], "username": "user", "source": "upload", "pgn": "1. e4 e5 *",
+        "game": Game(game_id="g1", source="upload", pgn="1. e4 e5 *", white="a", black="b",
+                     user_color="white", result="*"),
+        "analyses": [], "rag_context": "", "output": ""
+    }
+    final_state = graph.invoke(inputs, config={"configurable": {"thread_id": "test_initial_review"}})
+
+    # strategy_findings/rules_findings are reset to None by synthesizer_node after use, so the
+    # meaningful signal is that the run completed (no GraphRecursionError from the router
+    # re-entering its own "no messages" branch forever) and that only strategy was queried.
+    assert final_state["output"] == "Compiled review response."
+    mock_retrieve_context.assert_any_call(ANY, persist_dir=ANY, limit=2, bucket="strategies")
+    assert not any(
+        call.kwargs.get("bucket") == "rules" for call in mock_retrieve_context.call_args_list
+    )

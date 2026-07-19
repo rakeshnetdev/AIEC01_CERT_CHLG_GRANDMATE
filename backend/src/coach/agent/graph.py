@@ -357,13 +357,25 @@ def router_agent_node(state: CoachState) -> dict:
     messages = state.get("messages", [])
     
     if not messages:
+        if state.get("strategy_findings") is not None:
+            # Strategy already ran for this initial review (re-entry via the loop-back edge).
+            # Rules never runs on a plain review — go straight to the synthesizer.
+            return {
+                "delegated_specialist": None,
+                "execution_logs": ["router_agent: Initial review — strategy done, routing to synthesizer."],
+                "agent_steps": [{
+                    "agent_name": "Router Agent",
+                    "prompt": "(Fast-path — strategy already gathered for initial review)",
+                    "response": "synthesizer (initial-review fast-path)"
+                }]
+            }
         return {
-            "delegated_specialist": None,
-            "execution_logs": ["router_agent: No messages present, skipping routing."],
+            "delegated_specialist": "strategy",
+            "execution_logs": ["router_agent: No messages present (initial review). Defaulting to strategy specialist."],
             "agent_steps": [{
                 "agent_name": "Router Agent",
-                "prompt": "(Skipped — no messages present)",
-                "response": "None (nothing to route)"
+                "prompt": "(Skipped — no messages present, initial review)",
+                "response": "strategy (fast-path default)"
             }]
         }
 
