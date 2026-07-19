@@ -214,7 +214,7 @@ The Grandmate application is built as a completely decoupled architecture, commu
 Seven scenarios spanning detection, theming, routing, and grounding — each traceable to a concrete
 seed position, test, or report field rather than asserted narrative. (An earlier version of this
 table included a returning-user memory-recall scenario and an Opening Explorer lookup. The Opening
-Explorer row was removed because that tool isn't implemented — it's listed as future work in §7.5.
+Explorer row was removed because that tool isn't implemented — that tool is not built.
 The memory-recall row was removed because there is no durable, cross-session learner profile in the
 code today — only an in-process LangGraph checkpointer that doesn't survive a restart. The durable
 profile is intended design, not current state; it is listed as the first item in §7.2.)
@@ -321,18 +321,6 @@ Bucketed (production path) — this is how the application actually retrieves, w
 * **Coach and academy dashboards.** Track a student's weaknesses across months rather than one
   game. Depends on the learner profile above.
 * **Opponent preparation.** Summarise an opponent's recent games into a short, targeted plan.
-
-### 7.4 Cost
-A review costs roughly a fraction of a cent in model usage, and nothing when idle. The original
-costing assumed a model that has since been withdrawn, so it needs redoing against whichever model
-becomes primary. Self-hosting only becomes cheaper at a scale far beyond current usage, so hosted
-APIs remain the right choice for now.
-
-### 7.5 Tools deliberately left out
-The prototype keeps analysis local — engine and rules library only — which is what makes the
-zero-hallucination guarantee possible. Two external sources were considered and not built: an
-opening database for grounding opening advice in real game statistics, and web search for questions
-about players and tournaments rather than positions.
 
 ---
 
