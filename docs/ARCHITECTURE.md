@@ -179,12 +179,10 @@ same thread. This is safe only because dispatch is one-shot — under the earlie
 inspected those fields to decide the next hop, persisted findings would have mis-routed every
 subsequent turn.
 
-> **Superseded:** phase 9 used a five-branch fast-path table and looped specialists back through
-> the router to sequence them. That design is recorded in
-> [`final_docs/implementation/phase9.md`](../final_docs/implementation/phase9.md); phase 10 replaced
-> it with the one-shot dispatch above. See
-> [`final_docs/implementation/phase10.md`](../final_docs/implementation/phase10.md) for the
-> rationale, including the routing defect that made the specialist layer inert on reviews.
+> **Superseded design.** An earlier revision used a five-branch fast-path table and looped
+> specialists back through the router to sequence them. It was replaced by the one-shot dispatch
+> above after a routing defect was traced: on a plain `/review` the router returned before reaching
+> its own strategy default, so neither specialist ran and the dual-corpus retrieval never fired.
 
 **Net effect.** An initial `/review` costs **0 router LLM calls** — dispatch is implied by state.
 A `/chat` follow-up costs exactly **one** classification call, whether it dispatches to one

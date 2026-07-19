@@ -81,7 +81,7 @@ and a regression test covers it.
 
 ## History
 
-Phase 9 introduced a five-branch fast-path table and the specialist loop-back, documented in
-[`final_docs/implementation/phase9.md`](../../final_docs/implementation/phase9.md). Phase 10
-replaced it after tracing a defect that made the specialist layer inert on `/review` entirely — see
-[`final_docs/implementation/phase10.md`](../../final_docs/implementation/phase10.md).
+An earlier revision introduced a five-branch fast-path table and looped specialists back through the
+router to sequence them. It was replaced by the one-shot dispatch above after a routing defect was
+traced: on a plain `/review` the router returned before reaching its own strategy default, so
+neither specialist ran and the dual-corpus retrieval never fired during a review.
