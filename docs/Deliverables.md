@@ -223,72 +223,60 @@ code today — only an in-process LangGraph checkpointer that doesn't survive a 
 | :---: | :--- | :--- | :--- |
 | **1** | Pasted blunder game (1.e4 e5 2.Qh5 Nc6 3.Bc4 Nf6 4.Qxf7#) | Detects Scholar's Mate; explains f7 weakness; recommends checkmate defense. | Seed position in `evals/generate_synthetic.py` ("Scholar's mate threat on f7"); scored by the detection harness. |
 | **2** | Paste game with an en passant option | Evaluates en passant legality; defines the motif; links to rule docs. | Seed position in `evals/generate_synthetic.py`; the `en_passant` slice reaches 100% agreement in the latest run. |
-| **3** | Paste game with a pawn promoting on the 7th/8th rank | Detects promotion vs. underpromotion; explains why a queen (or an underpromotion) was correct. | Seed position in `evals/generate_synthetic.py`; the `promotion` slice is the harness's weakest at 71% agreement (§5.2 caveat 2). |
+| **3** | Paste game with a pawn promoting on the 7th/8th rank | Detects promotion vs. underpromotion; explains why a queen (or an underpromotion) was correct. | Seed position in `evals/generate_synthetic.py`; promotions are among the harness's weakest slices at 71% agreement (see §5.2). |
 | **4** | Paste game with a tactical fork error | Flags the move attacking 2+ pieces via the deterministic `classify_theme` heuristic; retrieves fork-themed RAG content. | `backend/src/coach/analysis/themes.py::classify_theme` "Fork" branch — a rule, not an LLM guess. |
 | **5** | "What is stalemate?" as a chat follow-up after an initial review | Router fast-paths (no reclassification LLM call once findings exist); `rules_node` retrieves from the FIDE PDF bucket; grounding guard is forced to deterministic mode for the chat turn. | `backend/tests/test_phase9.py::test_router_delegates_to_rules`. |
 | **6** | Question resulting in hallucination risk | Grounding guard blocks any illegal/off-PV move before it reaches the user. | `evals/test_grounding.py`; `illegal_move_rate` in `evals/report.json`. |
 | **7** | "How do I meet the Sicilian?" (strategy question) | `strategy_node` retrieves only from the `strategies` corpus bucket (openings + tactics), never `rules` — the bucket filter is applied before RRF fusion. | `backend/tests/test_phase9.py::test_router_delegates_to_strategy`. |
 
 ### 5.2 Evaluation Harness & Results
-The test suite utilizes a three-tier evaluation setup aligned directly with the Session 5 systematic metrics-driven development guidelines:
-1. **Deterministic Verification:** Runs local unit tests verifying centipawn blunder classifications and python-chess move validation.
-2. **Grounding Verification:** Deploys a dual Grounding Guard (deterministic python-chess legality checks + an LLM-as-a-Judge semantic correctness check) to maintain 0% move hallucination rates.
-3. **Semantic Quality Verification:** Prompts an LLM-as-judge to evaluate explanation faithfulness and tone clarity against the baseline chess library.
 
-| Metric | Evaluation Source | Target | Measured | Status |
+Three layers of checks:
+
+1. **Correctness** — unit tests over move classification and legality.
+2. **Grounding** — every move named in an answer is checked against the engine, by rule first and
+   then by an LLM reviewer.
+3. **Quality** — an LLM reviewer scores how faithful and how helpful each explanation is.
+
+| Metric | Measured against | Target | Result | |
 | :--- | :--- | :---: | :---: | :---: |
-| **Detection F1 (Blunders)** | Independent Stockfish depth-24 oracle | ≥ 0.90 | **0.9294** | ✅ Pass |
-| **Severity Accuracy** | Independent depth-24 oracle | ≥ 0.85 | **0.9073** | ✅ Pass |
-| **Hallucinated Move Rate** | python-chess + PV check | 0% | **0.0000%** | ✅ Pass |
-| **RAGAS Faithfulness** | Grounded concepts + engine facts | ≥ 0.85 | **0.8667** | ✅ Pass |
-| **LLM-Judge Helping Quality** | Reference notes | ≥ 4 / 5 | **3.17 / 5** | ⚠️ Measurement artefact — see below |
+| Detection F1 (blunders) | Independent Stockfish depth-24 analysis | ≥ 0.90 | **0.9294** | ✅ |
+| Severity accuracy | Independent depth-24 analysis | ≥ 0.85 | **0.9073** | ✅ |
+| Hallucinated move rate | python-chess legality + engine lines | 0% | **0.0000%** | ✅ |
+| Faithfulness | Retrieved sources + engine facts | ≥ 0.85 | **0.8667** | ✅ |
+| Coaching quality | Reference notes | ≥ 4 / 5 | **3.17 / 5** | ⚠️ |
 
-Detection is measured over all 151 positions. The judged metrics are measured at **n = 12**,
-raised from the previous n = 3 specifically because the smaller sample was too unstable to draw
-conclusions from.
+Detection is measured over all 151 positions. The judged metrics use 12 samples.
 
-**What the larger sample changed.** At n = 3, repeated runs of unchanged code produced faithfulness
-anywhere from 0.75 to 1.00 and coaching quality from 3.33 to 4.00 — each crossing its target in
-both directions. At n = 12 both settle:
+Produced by `evals/report.py`; raw output in `evals/report.json`. Dataset design is described in
+[synthetic_data_and_eval_design.md](./synthetic_data_and_eval_design.md).
 
-| Metric | At n = 3 (across runs) | At n = 12 | Reading |
-|---|---|---|---|
-| RAGAS Faithfulness | 0.75 – 1.00 | **0.8667** | Passes, but only just — the earlier 1.00 was small-sample luck, not a real result |
-| LLM-Judge Helping Quality | 3.33 – 4.00 | **3.17** | Stable, but see the caveat below — the score reflects the harness input, not the coaching |
+**The detection score is genuinely earned.** Ground truth comes from Stockfish at depth 24, which is
+independent of the classifier being graded — the production system runs at depth 16 with its own
+thresholds. To prove the test can fail, we deliberately broke those thresholds so that no move could
+be classified as a mistake: F1 fell from 0.95 to **0.19**. A test that cannot fail proves nothing,
+so this matters more than the passing score itself.
 
-Detection still varies run to run (F1 has measured 0.9286 – 0.9586 on identical inputs) because the
-engine is not reproducible; read those figures with a tolerance of about ±0.02 rather than as exact
-values.
+Accuracy is not uniform. Near-miss inaccuracies are hardest to agree on (70%), followed by
+promotions (71%), while en passant, forced mate, and move disambiguation reach 100%.
 
-**The coaching-quality figure does not mean what it appears to.** Each judged case is built as a
-*single-move* game. The coach is designed to review a whole game, so on a one-move input it cannot
-produce most of what it is scored on — its own output says "the game was incomplete" and leaves the
-"what went well" section empty. Given the identical judge and prompt, a **real 23-move game scores
-4/5**, against 3/5 for the one-move fragment the harness sends.
+**Three qualifications apply to the numbers above.**
 
-So `3.17` is best read as *coaching quality has not been measured on realistic input*, rather than
-as a product shortfall. Two further factors compound it: the judge is given no description of what
-each score means, and some of what it rewards — praising creative attempts, speculating on how
-unconventional moves might work out — is exactly what the grounding rules forbid.
+1. **These measure GPT-4o, not Gemini.** The configured primary model is unavailable, so every
+   request falls back to GPT-4o. The "Gemini primary" description elsewhere in this repository does
+   not reflect what actually runs.
 
-This, the engine non-determinism, and the remaining gaps are tracked with fixes in
-[issues-and-improvements.md](./issues-and-improvements.md) §2.
+2. **The coaching score reflects the test setup, not the coaching.** Each judged case is a
+   *single-move* game. The coach is built to review a whole game, so it cannot produce most of what
+   it is scored on — its own output notes that the game is incomplete. Given the same reviewer and
+   the same question, a real 23-move game scores **4/5** against 3/5 for the one-move fragment. Read
+   3.17 as *not yet measured on realistic input*, rather than as poor coaching.
 
-Measured from `evals/report.py`; raw output retained in `evals/report.json`. The evaluation harness was rebuilt after an audit found the previous version measured nothing; the design and the implementation outcome are recorded in [synthetic_data_and_eval_design.md](./synthetic_data_and_eval_design.md).
+3. **The engine does not repeat exactly.** Identical inputs at identical depth have produced F1
+   between 0.9286 and 0.9586. Read detection figures with a tolerance of about ±0.02.
 
-> **These are real, falsifiable measurements.** Detection is scored against an *independent* Stockfish depth-24 oracle, not against the function under test; the judged layer is measured against the position each sample actually came from. The qualifications below record how the harness was made honest and where the remaining limits are.
-
-**1. The evaluated model is GPT-4o — confirmed, not assumed.** `gemini/gemini-1.5-flash` (the documented primary) now returns a hard `404 Not Found` from Google's API regardless of key/config: the model has been retired. Every LLM call falls through LiteLLM's fallback to `gpt-4o`, which serves all judged traffic. This isn't a local `.env` gap anymore — it's confirmed against the live API, forcing `LLM_MODEL=gemini/gemini-1.5-flash` explicitly and watching every primary attempt 404. Every LLM-dependent row above describes GPT-4o's behaviour; the "Gemini 1.5 Flash primary" framing elsewhere in this repo's docs no longer reflects what can actually run.
-
-**2. Detection F1 `0.9586` and Severity Accuracy `0.8940` are real, and the harness can now fail.** The previous dataset was labelled by `calculate_cpl_and_label(...)` — the very function then graded against it — so any score was a tautological 1.0. The rebuilt `generate_synthetic.py` no longer imports the production classifier: ground truth comes from Stockfish at depth 24, and the production configuration (depth 16 + production classifier) is scored against it over **n = 151** rows. **Proof it measures something:** corrupting the thresholds so nothing can be classified as a mistake drops F1 from `0.9529` to **`0.1875`** and severity accuracy to `0.4238` — the old harness returned 1.0 under any mutation. This falsification test is the strongest single piece of evidence in the submission. The real error also localises: the `inaccuracy` class agrees only **70%** (the narrow 50–100cp band is hardest to resolve at depth 16), `promotion` **71%**, while `en_passant`, `forced_mate`, and `san_disambiguation` reach 100%; black 80% vs white 95%.
-
-**3. RAGAS Faithfulness `0.75` now fails its `0.85` target.** The old harness's `0.30` and `1.0` readings were both harness artifacts — reconstructing each game as `pgn=f"1. {san_played} *"` discarded `fen_before` and judged mid-game samples against the wrong board, and an empty context silently defaulted the score to `1.0`. The rebuilt harness fixed both: it builds the position from `fen_before` and gives the judge the **engine facts** alongside the RAG context. With the primary model now confirmed as GPT-4o (see caveat 1) rather than Gemini, faithfulness measures **0.75** (n = 2) — below target. Alongside it, illegal-move rate is **0.0%** (n = 2 moves) and coaching quality **4.00/5** (n = 3); every run prints its not-measured accounting (`judge_failures=0, pipeline_failures=0, rows_without_rag_context=1`) instead of defaulting to a pass. At n = 2 this could be sampling noise rather than a real GPT-4o weakness — see caveat 5.
-
-**4. Known caveat — engine non-determinism.** Three runs on the same dataset and depth have now produced F1 `0.9467` / `0.9529` / `0.9586` and severity `0.9073` / `0.8940` / `0.8940` — different labels each time. This is a genuine violation of the "same game + depth ⇒ same labels" rule, most likely Stockfish threading, and it was invisible before because a circular metric is perfectly reproducible. Until it is pinned (e.g. `Threads=1`), the detection figures should be read with a **±0.02 band**, not the tighter ±0.01 previously assumed.
-
-**5. Small-sample caveat on the judged layer.** Faithfulness rests on n = 2, coaching quality and illegal-move rate on n = 3. The numbers are real, but the judged layer is thin — the faithfulness miss above should be treated as a signal to re-run at a larger sample, not as a confirmed regression, before drawing conclusions from it.
-
-*Follow-ups:* decide on a real primary model now that `gemini-1.5-flash` is retired (see caveat 1 — this affects `ARCHITECTURE.md`, `PLAN.md`, and `config/settings.py`, not just this report); pin the engine to remove the non-determinism band; raise the judged-layer sample count, particularly to re-check the sub-target faithfulness score; and add coverage for the router intent/fast-path, guardrail refusals, and memory persistence, which are not yet evaluated.
+Each of these, and the remaining gaps, is tracked with a planned fix in
+[issues-and-improvements.md](./issues-and-improvements.md).
 
 ---
 
@@ -368,7 +356,7 @@ To minimize execution costs while maintaining accuracy, the system was designed 
 economic tiers:
 * **Cloud APIs:** originally costed against Gemini 1.5 Flash pricing ($0.075 / million input tokens,
   $0.30 / million output tokens, ~$0.0004 USD per game review with zero idle costs). **That model has
-  since been retired by Google** (see §5 caveat 1) — every LLM call now runs on the `gpt-4o`
+  since been retired by Google** (see §5.2) — every LLM call now runs on the `gpt-4o`
   fallback, so this per-review cost figure needs re-costing against whatever model actually ends up
   primary, not against a model that can no longer be called.
 * **Self-Hosted GPU (Llama 3 8B):** ~$0.50–$1.20/hour on GPU clouds. Break-even requires >1.5M
