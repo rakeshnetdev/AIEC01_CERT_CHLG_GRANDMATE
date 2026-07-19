@@ -13,6 +13,7 @@
 | 📋 **Full Deliverables** | Core challenge deliverables and self-assessment checklists | [docs/Deliverables.md](./docs/Deliverables.md) |
 | 🏗️ **System Architecture** | Subsystem flowcharts, request-lifecycle sequences, and deployment topologies | [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) |
 | 🗺️ **Implementation Plan** | Chronological development phases and engineering logs | [docs/PLAN.md](./docs/PLAN.md) |
+| 🔧 **Open Issues & Improvements** | Known gaps in the design and the evaluation, and the ranked plan to address them | [docs/issues-and-improvements.md](./docs/issues-and-improvements.md) |
 | 🖼️ **Diagrams** | Every mermaid diagram referenced above, as standalone files | [docs/diagrams/](./docs/diagrams/) |
 | 📊 **Retriever Evaluation** | Hybrid RRF vs. dense vs. BM25 benchmark, bucketed and unbucketed | [docs/retriever_evaluation_report.md](./docs/retriever_evaluation_report.md) |
 | 🧪 **Synthetic Data & Evals** | What test data the eval harness uses and how | [docs/synthetic_data_and_eval_design.md](./docs/synthetic_data_and_eval_design.md) |

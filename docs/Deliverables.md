@@ -237,11 +237,27 @@ The test suite utilizes a three-tier evaluation setup aligned directly with the 
 
 | Metric | Evaluation Source | Target | Measured | Status |
 | :--- | :--- | :---: | :---: | :---: |
-| **Detection F1 (Blunders)** | Independent Stockfish depth-24 oracle | ≥ 0.90 | **0.9586** | ✅ Pass |
-| **Severity Accuracy** | Independent depth-24 oracle | ≥ 0.85 | **0.8940** | ✅ Pass |
+| **Detection F1 (Blunders)** | Independent Stockfish depth-24 oracle | ≥ 0.90 | **0.9419** | ✅ Pass |
+| **Severity Accuracy** | Independent depth-24 oracle | ≥ 0.85 | **0.8742** | ✅ Pass |
 | **Hallucinated Move Rate** | python-chess + PV check | 0% | **0.0000%** | ✅ Pass |
-| **RAGAS Faithfulness** | Grounded concepts + engine facts | ≥ 0.85 | **0.75** | ❌ Fail |
-| **LLM-Judge Helping Quality** | Reference notes | ≥ 4 / 5 | **4.00 / 5** | ✅ Pass |
+| **RAGAS Faithfulness** | Grounded concepts + engine facts | ≥ 0.85 | **1.00** | ✅ Pass |
+| **LLM-Judge Helping Quality** | Reference notes | ≥ 4 / 5 | **3.33 / 5** | ❌ Fail |
+
+**Read these as ranges, not fixed values.** Repeated runs over the same dataset, with the code
+unchanged, have produced:
+
+| Metric | Observed across runs |
+|---|---|
+| Detection F1 | 0.9286 – 0.9586 |
+| Severity Accuracy | 0.8742 – 0.9073 |
+| RAGAS Faithfulness | 0.75 – 1.00 |
+| LLM-Judge Helping Quality | 3.33 – 4.00 / 5 |
+
+Detection varies because the engine is not reproducible run to run; the judged metrics vary because
+the sample is small (n = 3). Faithfulness and coaching quality have each crossed their target in
+both directions across runs, so neither should be reported as a settled result. Both causes, and
+the plan to fix them, are tracked in
+[issues-and-improvements.md](./issues-and-improvements.md) §2.
 
 Measured from `evals/report.py`; raw output retained in `evals/report.json`. The evaluation harness was rebuilt after an audit found the previous version measured nothing; the design and the implementation outcome are recorded in [synthetic_data_and_eval_design.md](./synthetic_data_and_eval_design.md).
 
