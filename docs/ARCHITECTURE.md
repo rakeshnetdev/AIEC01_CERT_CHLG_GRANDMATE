@@ -3,6 +3,8 @@
 Deep architecture reference for the Certification Challenge build. Pairs with `CAPSTONE_BRIEF.md`
 (the graded write-up) and `PLAN.md` (the phased build). Diagrams are GitHub-native Mermaid.
 
+This document describes the system as it is today.
+
 ---
 
 ## 1. Design principles (the invariants)
@@ -76,15 +78,17 @@ flowchart TB
 ```mermaid
 flowchart TD
     U["User input: pasted PGN / question"] --> FETCH[fetch_and_analyse]
-    FETCH --> RAG_C[retrieve_rag_context]
-    RAG_C --> ROUTE{Router Agent}
+    FETCH --> ROUTE{Router Agent}
 
-    ROUTE -- "delegate (strategy)" --> STRAT[strategy_node]
-    ROUTE -- "delegate (rules)" --> RULES[rules_node]
-    ROUTE -- "done / direct" --> SYNTH[synthesizer_node]
+    ROUTE -- "small talk (0 LLM calls)" --> DONE([Canned reply — ends turn])
+    ROUTE -- "strategy only" --> STRAT[strategy_node]
+    ROUTE -- "rules only" --> RULES[rules_node]
+    ROUTE -- "both (parallel fan-out)" --> STRAT
+    ROUTE -- "both (parallel fan-out)" --> RULES
+    ROUTE -- "neither needed" --> SYNTH[synthesizer_node]
 
-    STRAT --> ROUTE
-    RULES --> ROUTE
+    STRAT --> SYNTH
+    RULES --> SYNTH
 
     SYNTH --> GUARD{Grounding Guard}
     GUARD -- approved --> WEAK[Top weaknesses]
@@ -98,191 +102,167 @@ flowchart TD
 *(Copy in [`diagrams/agent-workflow.md`](diagrams/agent-workflow.md).)*
 
 **Multi-agent topology.** The single `narrator_agent` was replaced by a **router → specialist →
-synthesizer** team: `router_agent_node` classifies intent and delegates, `strategy_node` and
+synthesizer** team: `router_agent_node` classifies intent and dispatches, `strategy_node` and
 `rules_node` each own one domain and one corpus bucket, and `synthesizer_node` fuses their findings
-into the one answer the user reads. Specialists loop back to the router so it can sequence them; the
-`should_delegate` conditional edge maps `delegated_specialist` onto the next node.
+into the one answer the user reads. The `should_delegate` conditional edge maps the router's
+`dispatch_targets` onto the next node — or onto *both* specialist nodes at once, by returning a
+list, which is how LangGraph fans out to parallel branches. Specialists edge straight to
+`synthesizer_node`; nothing loops back to the router.
 
-**Router fast-pathing.** `router_agent_node` decides *deterministically* wherever the outcome is
-already implied by state, and only calls the LLM for genuine intent classification:
+**One-shot dispatch.** `router_agent_node` is entered **exactly once per invocation** and decides
+everything for that turn in a single visit. It reaches for the LLM only when genuine intent
+classification is required:
 
-| Router state | Decision | LLM call |
+| Turn | `dispatch_targets` | LLM call |
 |---|---|---|
-| `strategy_findings` **and** `rules_findings` set | → `synthesizer_node` | none |
-| only `strategy_findings` set | → `rules_node` (sequential chaining) | none |
-| only `rules_findings` set | → `strategy_node` (sequential chaining) | none |
-| no `HumanMessage` in state (initial `/review`) | → `strategy_node` (default) | none |
-| `HumanMessage` present, no findings yet (chat follow-up) | classify intent | **1 call** |
+| Initial `/review` (no messages) | `["strategy"]` | none |
+| Pure small talk ("hi", "thanks") | `["end"]` — canned reply, ends the turn | none |
+| Chat, strategy question | `["strategy"]` | 1 |
+| Chat, rules question | `["rules"]` | 1 |
+| Chat, needs both | `["strategy", "rules"]` — parallel fan-out | 1 |
+| Chat, neither specialist needed | `[]` — straight to synthesis | 1 |
 
-**Before: router always calls the LLM.** Every visit to `router_agent` — the first pass on an
-initial review, or a loop-back after a specialist finishes — used to invoke the classification LLM
-call, even when the next step was already deterministic given current state.
-
-```mermaid
-stateDiagram-v2
-    [*] --> FetchAndAnalyse
-    FetchAndAnalyse --> RetrieveRagContext
-    RetrieveRagContext --> RouterAgent
-
-    state RouterAgent {
-        [*] --> LLMClassify: always calls chat()
-        LLMClassify --> [*]
-    }
-
-    RouterAgent --> StrategyNode: LLM picks "strategy"
-    RouterAgent --> RulesNode: LLM picks "rules"
-    RouterAgent --> SynthesizerNode: both findings already present
-
-    StrategyNode --> RouterAgent: loop back (LLM call again)
-    RulesNode --> RouterAgent: loop back (LLM call again)
-
-    SynthesizerNode --> GroundingGuard
-    GroundingGuard --> [*]: approved
-    GroundingGuard --> SynthesizerNode: rejected, retry_count < 3
-
-    note right of RouterAgent
-        Every entry costs 1 LLM call,
-        regardless of whether the next
-        hop is already implied by state
-        (e.g. only one specialist has
-        run so far).
-    end note
-```
-
-**After: router short-circuits on known state.** `router_agent_node` now inspects
-`strategy_findings` / `rules_findings` / whether any `HumanMessage` exists *before* calling the
-LLM. Three of its four branches return deterministically with zero LLM cost; only the "user asked
-something new, no findings yet" branch reaches the `chat()` call.
+Rules deliberately does not run on a plain review: there is no rules question to answer. Small talk
+skips the synthesizer *and* the grounding guard, since a canned reply names no moves and so has
+nothing to legality-check.
 
 ```mermaid
 stateDiagram-v2
     [*] --> FetchAndAnalyse
-    FetchAndAnalyse --> RetrieveRagContext
-    RetrieveRagContext --> RouterAgent
+    FetchAndAnalyse --> RouterAgent
 
     state RouterAgent {
         [*] --> CheckState
-        CheckState --> BothGathered: strategy_findings and rules_findings set
-        CheckState --> OnlyStrategyDone: strategy set, rules unset
-        CheckState --> OnlyRulesDone: rules set, strategy unset
-        CheckState --> NoHumanMessage: no HumanMessage in state
-        CheckState --> NeedsClassification: HumanMessage present, no findings yet
+        CheckState --> NoMessages: initial /review
+        CheckState --> SmallTalk: whole-message greeting/thanks match
+        CheckState --> Classify: a real question
 
-        BothGathered --> [*]: skip (deterministic)
-        OnlyStrategyDone --> [*]: skip, fast-route to rules
-        OnlyRulesDone --> [*]: skip, fast-route to strategy
-        NoHumanMessage --> [*]: skip, default to strategy
-        NeedsClassification --> [*]: calls chat() (only LLM cost)
+        NoMessages --> [*]: dispatch_targets = ["strategy"] (free)
+        SmallTalk --> [*]: canned reply, ends turn (free)
+        Classify --> [*]: calls chat() once (the only LLM cost)
     }
 
-    RouterAgent --> StrategyNode: NoHumanMessage / OnlyRulesDone / classified "strategy"
-    RouterAgent --> RulesNode: OnlyStrategyDone / classified "rules"
-    RouterAgent --> SynthesizerNode: BothGathered
+    RouterAgent --> [*]: small talk — no synthesis, no grounding
+    RouterAgent --> StrategyNode: "strategy", or initial review
+    RouterAgent --> RulesNode: "rules"
+    RouterAgent --> SynthesizerNode: nothing needed
 
-    StrategyNode --> RouterAgent: loop back (usually free)
-    RulesNode --> RouterAgent: loop back (usually free)
+    state Both <<fork>>
+    RouterAgent --> Both: classified "both"
+    Both --> StrategyNode
+    Both --> RulesNode
+
+    StrategyNode --> SynthesizerNode
+    RulesNode --> SynthesizerNode
 
     SynthesizerNode --> GroundingGuard
     GroundingGuard --> [*]: approved
     GroundingGuard --> SynthesizerNode: rejected, retry_count < 3
 
     note right of RouterAgent
-        Only "NeedsClassification"
-        (a genuine user follow-up with
-        no specialist findings gathered
-        yet) costs an LLM call. All other
-        branches are free — the outcome
-        is already implied by state.
+        Entered once per turn. The
+        both case fans out to two
+        parallel branches in one
+        superstep, and both edge into
+        SynthesizerNode, which runs
+        once after both finish.
     end note
 ```
 
-**Net effect.** On an initial `/review` (no `HumanMessage` yet), both specialists still run for full
-coverage, but the router itself never costs an LLM call — every decision that used to need a
-classification call is now made for free from state. On a `/chat` follow-up, the first router visit
-still needs the LLM for real intent classification, but the loop-back after the first specialist
-finishes is now a free, deterministic hop to the other specialist. Total LLM calls per turn drop by
-one in both flows, with no loss of specialist coverage.
-*(Copy in [`diagrams/router-fast-pathing.md`](diagrams/router-fast-pathing.md).)*
+**Parallel writes need reducers.** Because both specialists can run in the same superstep, every
+state key either of them writes must be `Annotated` with a reducer — otherwise LangGraph raises
+`InvalidUpdateError: can receive only one value per step`. `execution_logs` and `agent_steps`
+already appended; `rag_context` required a `merge_rag_context` reducer. `strategy_findings` and
+`rules_findings` are distinct keys and never collide.
+
+**Findings persist.** `synthesizer_node` no longer clears `strategy_findings` / `rules_findings`,
+so a review's specialist work stays available as background context for later chat turns in the
+same thread. This is safe only because dispatch is one-shot — under the earlier design, which
+inspected those fields to decide the next hop, persisted findings would have mis-routed every
+subsequent turn.
+
+> **Superseded design.** An earlier revision used a five-branch fast-path table and looped
+> specialists back through the router to sequence them. It was replaced by the one-shot dispatch
+> above after a routing defect was traced: on a plain `/review` the router returned before reaching
+> its own strategy default, so neither specialist ran and the dual-corpus retrieval never fired.
+
+**Net effect.** An initial `/review` costs **0 router LLM calls** — dispatch is implied by state.
+A `/chat` follow-up costs exactly **one** classification call, whether it dispatches to one
+specialist, both, or neither; the "both" case runs the two specialists concurrently rather than
+chaining them. Pure small talk costs **nothing at all** and skips synthesis and grounding entirely.
+*(Copy in [`diagrams/router-dispatch.md`](diagrams/router-dispatch.md).)*
 
 ## 4a. Request lifecycle (end-to-end sequence)
 Traces a click in the browser all the way through the FastAPI route, the LangGraph
 router/specialist/synthesizer team, Stockfish/RAG, and the LiteLLM gateway, back to the UI — for
 both entry points the frontend calls. *(Copy in [`diagrams/request-lifecycle.md`](diagrams/request-lifecycle.md).)*
 
-**Flow A: `POST /review` (initial game analysis).** Router LLM cost: **0 calls** — every routing
-decision is implied by state (see the fast-pathing table above); only the specialist/synthesis/guard
-nodes call the gateway.
+**Both entry points run the same graph.** `/review` starts a thread and `/chat` continues it; the
+difference is what the router finds in state, not a different pipeline. Router LLM cost is **0
+calls** on a review (dispatch is implied by state), **1 call** on a real question, and **0** for
+pure small talk.
 
 ```mermaid
 sequenceDiagram
     participant UI as App.tsx [React]
     participant Client as api.ts [Client]
-    participant API as app.py::review_game [FastAPI]
+    participant API as app.py [FastAPI]
     participant Graph as graph.py [LangGraph]
     participant Eng as engine.py [Stockfish]
     participant RAG as rag/pipeline.py [Hybrid RRF]
     participant GW as gateway.py [LiteLLM]
 
-    UI->>Client: handleAnalyze() (AnalysisForm onSubmit) -> reviewGame(payload)
-    Client->>API: HTTP POST /review {username|pgn, source}
-    API->>API: validate_request() (guardrail)
+    alt POST /review (initial analysis)
+        UI->>Client: handleAnalyze() (AnalysisForm onSubmit)
+        Client->>API: POST /review {username|pgn, source}
+        API->>API: validate_request() (guardrail)
+    else POST /chat (follow-up question)
+        UI->>Client: handleSendChat() (ChatPanel onSubmit)
+        Client->>API: POST /chat {message, session_id}
+        API->>API: validate_request() (guardrail, off-topic short-circuits)
+        API->>API: replies immediately if no game is loaded in this thread
+    end
+
     API->>Graph: coach_graph.invoke(inputs, config={thread_id})
+
     Note over Graph: fetch_and_analyse_node
-    Graph->>Eng: analyze_game() -> per-move centipawn loss + severity
-    Note over Graph: retrieve_rag_context_node
-    Graph->>RAG: retrieve_context() (theme-seeded, pre-fetch)
-    Note over Graph: router_agent_node (no HumanMessage yet -> fast-path, 0 LLM calls)
-    Graph->>RAG: strategy_node: retrieve_context(bucket="strategies")
-    Graph->>GW: strategy_node: chat() -> strategy findings
-    Note over Graph: router_agent_node (strategy done -> fast-path to rules, 0 calls)
-    Graph->>RAG: rules_node: retrieve_context(bucket="rules")
-    Graph->>GW: rules_node: chat() -> rules findings
-    Note over Graph: router_agent_node (both gathered -> fast-path to synthesizer, 0 calls)
-    Graph->>GW: synthesizer_node: chat() -> fused narrative
-    Graph->>GW: grounding_guard_node: chat() (LLM-as-a-Judge, initial review)
-    alt rejected, retry_count < 3
-        Graph->>GW: synthesizer_node: chat() again (with critique feedback)
+    alt first call for this thread
+        Graph->>Eng: analyze_game() -> per-move centipawn loss + severity
+    else game already analysed
+        Note over Graph: returns immediately, no engine work repeated
     end
+
+    Note over Graph: router_agent_node, entered exactly once
+    alt initial review (no messages yet)
+        Note over Graph: dispatches to strategy, 0 LLM calls
+    else pure small talk
+        Note over Graph: canned reply, 0 LLM calls
+        Note over Graph: returns without synthesis or grounding
+    else a real question
+        Graph->>GW: chat() -> strategy, rules, both, or neither
+    end
+
+    opt one or both specialists dispatched
+        Graph->>RAG: retrieve_context(bucket="strategies" and/or "rules")
+        Graph->>GW: specialist chat() -> findings
+        Note over Graph: the both case runs the two specialists in parallel
+    end
+
+    Graph->>GW: synthesizer_node: chat() -> answer
+    Graph->>GW: grounding_guard_node (LLM judge on a review, deterministic on chat)
+    opt rejected and retry_count < 3
+        Graph->>GW: synthesizer_node: chat() again with the critique
+    end
+
     Graph->>API: returns final_state
-    API->>API: is_safe_output() (guardrail) + assemble CoachReport
-    API->>Client: CoachReport JSON
-    Client->>UI: setReport(data) -> dashboard re-renders
-```
-
-**Flow B: `POST /chat` (follow-up question).** Router LLM cost: **1 call** — the first router visit
-does real intent classification; the loop-back after the first specialist is a free, deterministic
-hop to the second one.
-
-```mermaid
-sequenceDiagram
-    participant UI as App.tsx [React]
-    participant Client as api.ts [Client]
-    participant API as app.py::chat_message [FastAPI]
-    participant Graph as graph.py [LangGraph]
-    participant RAG as rag/pipeline.py [Hybrid RRF]
-    participant GW as gateway.py [LiteLLM]
-
-    UI->>Client: handleSendChat() (ChatPanel onSubmit) -> chatMessage(payload)
-    Client->>API: HTTP POST /chat {message, session_id}
-    API->>API: validate_request() (guardrail; off-topic -> short-circuit reply)
-    API->>Graph: coach_graph.get_state(config={thread_id})
-    alt no game loaded in this thread
-        API->>Client: {"reply": "Please load and analyze a game first"} (no graph invoke)
-    else game loaded
-        API->>Graph: coach_graph.invoke({messages:[HumanMessage]}, config)
-        Note over Graph: router_agent_node (HumanMessage, no findings yet -> 1 LLM call)
-        Graph->>GW: router_agent_node: chat() -> classify "strategy" or "rules"
-        Graph->>RAG: delegated specialist: retrieve_context(bucket=...)
-        Graph->>GW: delegated specialist: chat() -> findings
-        Note over Graph: router_agent_node (one specialist done -> fast-path to the other, 0 calls)
-        Graph->>GW: second specialist: chat() -> findings
-        Graph->>GW: synthesizer_node: chat() -> fused reply
-        Note over Graph: grounding_guard_node forced to deterministic mode (chat follow-up)
-        Graph->>API: returns final_state
-        API->>API: extract last AIMessage as reply + rebuild DeveloperInsight
-        API->>Client: {"reply": ..., "developer_insight": {...}}
+    API->>API: is_safe_output() (guardrail)
+    alt /review
+        API->>Client: CoachReport JSON
+        Client->>UI: setReport(data) -> dashboard re-renders
+    else /chat
+        API->>Client: {reply, developer_insight}
+        Client->>UI: appends to the chat feed
     end
-    Client->>UI: append reply to conversation
 ```
 
 ## 5. Data flow & contracts
@@ -366,8 +346,8 @@ Every node records what it was asked and what it answered, so the whole multi-ag
 inspectable from the browser without a LangSmith account:
 - **`AgentStep`** (`agent_name`, `prompt`, `response`) — appended by each node to the state's
   `agent_steps` list. The `prompt` is the flattened LLM conversation rendered as
-  `[ROLE]: content` lines; fast-pathed router visits record a `(Fast-path — …)` /
-  `(Skipped — …)` marker instead, which makes the saved LLM call visible on screen.
+  `[ROLE]: content` lines. Router visits that decide without the LLM record a `(Fast-path — …)`,
+  `(Skipped — …)`, or small-talk marker instead, which makes the saved LLM call visible on screen.
 - **`execution_log`** — a plain-text trail of what each node did (documents retrieved, specialist
   selected, grounding verdict), in execution order.
 - Both are carried on the `DeveloperInsight` payload returned by `/review` and `/chat`, and surfaced

@@ -6,15 +6,17 @@ Referenced from [`ARCHITECTURE.md` §4](../ARCHITECTURE.md#4-agent-workflow-cont
 ```mermaid
 flowchart TD
     U["User input: pasted PGN / question"] --> FETCH[fetch_and_analyse]
-    FETCH --> RAG_C[retrieve_rag_context]
-    RAG_C --> ROUTE{Router Agent}
+    FETCH --> ROUTE{Router Agent}
 
-    ROUTE -- "delegate (strategy)" --> STRAT[strategy_node]
-    ROUTE -- "delegate (rules)" --> RULES[rules_node]
-    ROUTE -- "done / direct" --> SYNTH[synthesizer_node]
+    ROUTE -- "small talk (0 LLM calls)" --> DONE([Canned reply — ends turn])
+    ROUTE -- "strategy only" --> STRAT[strategy_node]
+    ROUTE -- "rules only" --> RULES[rules_node]
+    ROUTE -- "both (parallel fan-out)" --> STRAT
+    ROUTE -- "both (parallel fan-out)" --> RULES
+    ROUTE -- "neither needed" --> SYNTH[synthesizer_node]
 
-    STRAT --> ROUTE
-    RULES --> ROUTE
+    STRAT --> SYNTH
+    RULES --> SYNTH
 
     SYNTH --> GUARD{Grounding Guard}
     GUARD -- approved --> WEAK[Top weaknesses]

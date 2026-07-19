@@ -318,7 +318,7 @@ corpus-eating `data/` ignore rule to `/data/chroma/`, drop the hardcoded develop
 `/carlsen-games`, and keep the PGN dropdown rendered-but-disabled when no games load.
 **Acceptance:** ✓ `tests/test_phase9.py` green (bucketed retrieval per specialist + `should_delegate`)
 · ✓ router costs 0 LLM calls on `/review` and 1 on a `/chat` turn (see `ARCHITECTURE.md` §4 and
-`diagrams/router-fast-pathing.md`)
+`diagrams/router-dispatch.md`)
 · ✓ `git ls-files backend/data` lists both corpus buckets and `Carlsen.pgn`.
 
 ---

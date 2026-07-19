@@ -1,7 +1,11 @@
 import os
-import litellm
 from typing import List, Dict, Any
 from config.settings import get_settings
+
+# NOTE: litellm is imported lazily inside chat(). Importing it at module scope costs ~4s
+# (it eagerly pulls its whole provider tree, including chromadb), and this module is on the
+# import path of coach.agent.graph -- so it was dominating `langgraph dev` startup even
+# though nothing is called at import time. Keep it inside the function.
 
 def chat(messages: List[Dict[str, str]], model: str | None = None, **kw) -> str:
     """
@@ -23,8 +27,10 @@ def chat(messages: List[Dict[str, str]], model: str | None = None, **kw) -> str:
     os.environ["LITELLM_LOGGING"] = "FALSE"
 
     import time
-    import litellm.exceptions
     import logging
+
+    import litellm
+    import litellm.exceptions
     
     logger = logging.getLogger(__name__)
 

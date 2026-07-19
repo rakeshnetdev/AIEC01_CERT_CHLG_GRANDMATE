@@ -102,15 +102,17 @@ The orchestrator routes the user's intent to review games, analyze specific posi
 ```mermaid
 flowchart TD
     U["User input: pasted PGN / question"] --> FETCH[fetch_and_analyse]
-    FETCH --> RAG_C[retrieve_rag_context]
-    RAG_C --> ROUTE{Router Agent}
+    FETCH --> ROUTE{Router Agent}
 
-    ROUTE -- "delegate (strategy)" --> STRAT[strategy_node]
-    ROUTE -- "delegate (rules)" --> RULES[rules_node]
-    ROUTE -- "done / direct" --> SYNTH[synthesizer_node]
+    ROUTE -- "small talk (0 LLM calls)" --> DONE([Canned reply — ends turn])
+    ROUTE -- "strategy only" --> STRAT[strategy_node]
+    ROUTE -- "rules only" --> RULES[rules_node]
+    ROUTE -- "both (parallel fan-out)" --> STRAT
+    ROUTE -- "both (parallel fan-out)" --> RULES
+    ROUTE -- "neither needed" --> SYNTH[synthesizer_node]
 
-    STRAT --> ROUTE
-    RULES --> ROUTE
+    STRAT --> SYNTH
+    RULES --> SYNTH
 
     SYNTH --> GUARD{Grounding Guard}
     GUARD -- approved --> WEAK[Top weaknesses]
@@ -131,17 +133,16 @@ The multi-agent StateGraph coordinates sequential worker node execution and grou
 1. **`fetch_and_analyse` (Entry Node):**
    * *What it does:* Receives the user's uploaded PGN and runs the Stockfish engine to analyze each move, calculating centipawn loss and labeling mistakes (blunders, mistakes, inaccuracies).
    * *Output:* Populates `analyses` and `game` fields in the state.
-2. **`retrieve_rag_context`:**
-   * *What it does:* Pre-populates the general game context (such as opening metadata) before routing.
-3. **`router_agent`:**
+2. **`router_agent`:**
    * *What it does:* Inspects conversation history and game state to determine whether rules questions or strategy questions need specialist delegation. Bypasses LLM routing deterministically if findings are already present.
-4. **`strategy_node`:**
+   * *Small-talk short-circuit:* A message that is *purely* a greeting, thanks, or farewell ("hi", "thanks", "bye") is matched against a deterministic allowlist and answered from a template — 0 LLM calls, no specialist, and no grounding guard, since a canned reply names no moves. Matching is whole-message, so a real question that merely opens politely ("Hi, why was my move a blunder?") still reaches normal classification.
+3. **`strategy_node`:**
    * *What it does:* Queries the `strategies` RAG database for tactical concepts and positional motifs, executing a specialized strategy coaching prompt.
-5. **`rules_node`:**
+4. **`rules_node`:**
    * *What it does:* Queries the `rules` RAG database for official rules, stalemate, and legality validations, including the FIDE Laws of Chess PDF ingested page-by-page.
-6. **`synthesizer_node`:**
+5. **`synthesizer_node`:**
    * *What it does:* Consolidated responder that combines strategy and rules findings into a unified, user-friendly markdown narrative.
-7. **`grounding_guard`:**
+6. **`grounding_guard`:**
    * *What it does:* Inspects the narrative draft. The initial `/review` uses the LLM-as-a-Judge check; a chat follow-up (a prior AI turn already exists in state) always forces the fast deterministic python-chess legality check instead, regardless of whether the question was about rules or strategy.
    * *Flow logic:*
      * **Success:** Routes to `END` to deliver the final report to the user interface.
@@ -189,7 +190,7 @@ The Grandmate application is built as a completely decoupled architecture, commu
 ### 4.2 Backend Stack (FastAPI + Python)
 * **What it does:** Executes the heavy analytical logic, manages agent memory, retrieves context, and validates narration outputs.
 * **Key Features:**
-  * **LangGraph Multi-Agent Orchestration:** Coordinates the stateful workflow nodes (`fetch_and_analyse` → `retrieve_rag_context` → `router_agent` → `strategy_node` / `rules_node` → `synthesizer_node` → `grounding_guard`), with specialists looping back to the router so it can sequence them, and the router deciding without an LLM call wherever state already implies the next hop.
+  * **LangGraph Multi-Agent Orchestration:** Coordinates the stateful workflow nodes (`fetch_and_analyse` → `router_agent` → `strategy_node` / `rules_node` → `synthesizer_node` → `grounding_guard`), with the router deciding dispatch in a single visit per turn — one specialist, both in parallel (fan-out/fan-in on `synthesizer_node`), or neither — and deciding without an LLM call wherever state already implies the answer. Specialist findings persist across turns as background context.
   * **Dual-Mode Grounding Guard:**
     * *Option A (Deterministic):* Scans narrative outputs using SAN regex and checks move validity on `python-chess.Board` structures. Always active for chat messages (~5ms execution).
     * *Option B (LLM-as-a-Judge):* Evaluates the strategic correctness of the output text (e.g., detecting if a pin is mislabeled as a fork) and outputs JSON feedback to trigger rewrite loops.
@@ -213,50 +214,55 @@ The Grandmate application is built as a completely decoupled architecture, commu
 Seven scenarios spanning detection, theming, routing, and grounding — each traceable to a concrete
 seed position, test, or report field rather than asserted narrative. (An earlier version of this
 table included a returning-user memory-recall scenario and an Opening Explorer lookup. The Opening
-Explorer row was removed because that tool isn't implemented — it's listed as future work in §8.4.
+Explorer row was removed because that tool isn't implemented — that tool is not built.
 The memory-recall row was removed because there is no durable, cross-session learner profile in the
-code today — only an in-process LangGraph checkpointer that doesn't survive a restart; §7.1's
-"Persistent User Learner Profiles" claim describes the intended design, not the current state.)
+code today — only an in-process LangGraph checkpointer that doesn't survive a restart. The durable
+profile is intended design, not current state; it is listed as the first item in §7.2.)
 
 | ID | User Intent / Input | Expected Agent Action / Narrative Focus | Grounded in |
 | :---: | :--- | :--- | :--- |
 | **1** | Pasted blunder game (1.e4 e5 2.Qh5 Nc6 3.Bc4 Nf6 4.Qxf7#) | Detects Scholar's Mate; explains f7 weakness; recommends checkmate defense. | Seed position in `evals/generate_synthetic.py` ("Scholar's mate threat on f7"); scored by the detection harness. |
 | **2** | Paste game with an en passant option | Evaluates en passant legality; defines the motif; links to rule docs. | Seed position in `evals/generate_synthetic.py`; the `en_passant` slice reaches 100% agreement in the latest run. |
-| **3** | Paste game with a pawn promoting on the 7th/8th rank | Detects promotion vs. underpromotion; explains why a queen (or an underpromotion) was correct. | Seed position in `evals/generate_synthetic.py`; the `promotion` slice is the harness's weakest at 71% agreement (§5.2 caveat 2). |
+| **3** | Paste game with a pawn promoting on the 7th/8th rank | Detects promotion vs. underpromotion; explains why a queen (or an underpromotion) was correct. | Seed position in `evals/generate_synthetic.py`; promotions are among the harness's weakest slices at 71% agreement (see §5.2). |
 | **4** | Paste game with a tactical fork error | Flags the move attacking 2+ pieces via the deterministic `classify_theme` heuristic; retrieves fork-themed RAG content. | `backend/src/coach/analysis/themes.py::classify_theme` "Fork" branch — a rule, not an LLM guess. |
 | **5** | "What is stalemate?" as a chat follow-up after an initial review | Router fast-paths (no reclassification LLM call once findings exist); `rules_node` retrieves from the FIDE PDF bucket; grounding guard is forced to deterministic mode for the chat turn. | `backend/tests/test_phase9.py::test_router_delegates_to_rules`. |
 | **6** | Question resulting in hallucination risk | Grounding guard blocks any illegal/off-PV move before it reaches the user. | `evals/test_grounding.py`; `illegal_move_rate` in `evals/report.json`. |
 | **7** | "How do I meet the Sicilian?" (strategy question) | `strategy_node` retrieves only from the `strategies` corpus bucket (openings + tactics), never `rules` — the bucket filter is applied before RRF fusion. | `backend/tests/test_phase9.py::test_router_delegates_to_strategy`. |
 
 ### 5.2 Evaluation Harness & Results
-The test suite utilizes a three-tier evaluation setup aligned directly with the Session 5 systematic metrics-driven development guidelines:
-1. **Deterministic Verification:** Runs local unit tests verifying centipawn blunder classifications and python-chess move validation.
-2. **Grounding Verification:** Deploys a dual Grounding Guard (deterministic python-chess legality checks + an LLM-as-a-Judge semantic correctness check) to maintain 0% move hallucination rates.
-3. **Semantic Quality Verification:** Prompts an LLM-as-judge to evaluate explanation faithfulness and tone clarity against the baseline chess library.
 
-| Metric | Evaluation Source | Target | Measured | Status |
+Three layers of checks:
+
+1. **Correctness** — unit tests over move classification and legality.
+2. **Grounding** — every move named in an answer is checked against the engine, by rule first and
+   then by an LLM reviewer.
+3. **Quality** — an LLM reviewer scores how faithful and how helpful each explanation is.
+
+| Metric | Measured against | Target | Result | |
 | :--- | :--- | :---: | :---: | :---: |
-| **Detection F1 (Blunders)** | Independent Stockfish depth-24 oracle | ≥ 0.90 | **0.9586** | ✅ Pass |
-| **Severity Accuracy** | Independent depth-24 oracle | ≥ 0.85 | **0.8940** | ✅ Pass |
-| **Hallucinated Move Rate** | python-chess + PV check | 0% | **0.0000%** | ✅ Pass |
-| **RAGAS Faithfulness** | Grounded concepts + engine facts | ≥ 0.85 | **0.75** | ❌ Fail |
-| **LLM-Judge Helping Quality** | Reference notes | ≥ 4 / 5 | **4.00 / 5** | ✅ Pass |
+| Detection F1 (blunders) | Independent Stockfish depth-24 analysis | ≥ 0.90 | **0.9294** | ✅ |
+| Severity accuracy | Independent depth-24 analysis | ≥ 0.85 | **0.9073** | ✅ |
+| Hallucinated move rate | python-chess legality + engine lines | 0% | **0.0000%** | ✅ |
+| Faithfulness | Retrieved sources + engine facts | ≥ 0.85 | **0.8667** | ✅ |
+| Coaching quality | Reference notes | ≥ 4 / 5 | **3.17 / 5** | ⚠️ measured on single-move test games, not full games |
 
-Measured from `evals/report.py`; raw output retained in `evals/report.json`. The evaluation harness was rebuilt after an audit found the previous version measured nothing; the design and the implementation outcome are recorded in [synthetic_data_and_eval_design.md](./synthetic_data_and_eval_design.md).
+Detection is measured over all 151 positions. The judged metrics use 12 samples.
 
-> **These are real, falsifiable measurements.** Detection is scored against an *independent* Stockfish depth-24 oracle, not against the function under test; the judged layer is measured against the position each sample actually came from. The qualifications below record how the harness was made honest and where the remaining limits are.
+Produced by `evals/report.py`; raw output in `evals/report.json`. Dataset design is described in
+[synthetic_data_and_eval_design.md](./synthetic_data_and_eval_design.md).
 
-**1. The evaluated model is GPT-4o — confirmed, not assumed.** `gemini/gemini-1.5-flash` (the documented primary) now returns a hard `404 Not Found` from Google's API regardless of key/config: the model has been retired. Every LLM call falls through LiteLLM's fallback to `gpt-4o`, which serves all judged traffic. This isn't a local `.env` gap anymore — it's confirmed against the live API, forcing `LLM_MODEL=gemini/gemini-1.5-flash` explicitly and watching every primary attempt 404. Every LLM-dependent row above describes GPT-4o's behaviour; the "Gemini 1.5 Flash primary" framing elsewhere in this repo's docs no longer reflects what can actually run.
+**The detection score is genuinely earned.** Ground truth comes from Stockfish at depth 24, which is
+independent of the classifier being graded — the production system runs at depth 16 with its own
+thresholds. To prove the test can fail, we deliberately broke those thresholds so that no move could
+be classified as a mistake: F1 fell from 0.95 to **0.19**. A test that cannot fail proves nothing,
+so this matters more than the passing score itself.
 
-**2. Detection F1 `0.9586` and Severity Accuracy `0.8940` are real, and the harness can now fail.** The previous dataset was labelled by `calculate_cpl_and_label(...)` — the very function then graded against it — so any score was a tautological 1.0. The rebuilt `generate_synthetic.py` no longer imports the production classifier: ground truth comes from Stockfish at depth 24, and the production configuration (depth 16 + production classifier) is scored against it over **n = 151** rows. **Proof it measures something:** corrupting the thresholds so nothing can be classified as a mistake drops F1 from `0.9529` to **`0.1875`** and severity accuracy to `0.4238` — the old harness returned 1.0 under any mutation. This falsification test is the strongest single piece of evidence in the submission. The real error also localises: the `inaccuracy` class agrees only **70%** (the narrow 50–100cp band is hardest to resolve at depth 16), `promotion` **71%**, while `en_passant`, `forced_mate`, and `san_disambiguation` reach 100%; black 80% vs white 95%.
+Accuracy is not uniform. Near-miss inaccuracies are hardest to agree on (70%), followed by
+promotions (71%), while en passant, forced mate, and move disambiguation reach 100%.
 
-**3. RAGAS Faithfulness `0.75` now fails its `0.85` target.** The old harness's `0.30` and `1.0` readings were both harness artifacts — reconstructing each game as `pgn=f"1. {san_played} *"` discarded `fen_before` and judged mid-game samples against the wrong board, and an empty context silently defaulted the score to `1.0`. The rebuilt harness fixed both: it builds the position from `fen_before` and gives the judge the **engine facts** alongside the RAG context. With the primary model now confirmed as GPT-4o (see caveat 1) rather than Gemini, faithfulness measures **0.75** (n = 2) — below target. Alongside it, illegal-move rate is **0.0%** (n = 2 moves) and coaching quality **4.00/5** (n = 3); every run prints its not-measured accounting (`judge_failures=0, pipeline_failures=0, rows_without_rag_context=1`) instead of defaulting to a pass. At n = 2 this could be sampling noise rather than a real GPT-4o weakness — see caveat 5.
-
-**4. Known caveat — engine non-determinism.** Three runs on the same dataset and depth have now produced F1 `0.9467` / `0.9529` / `0.9586` and severity `0.9073` / `0.8940` / `0.8940` — different labels each time. This is a genuine violation of the "same game + depth ⇒ same labels" rule, most likely Stockfish threading, and it was invisible before because a circular metric is perfectly reproducible. Until it is pinned (e.g. `Threads=1`), the detection figures should be read with a **±0.02 band**, not the tighter ±0.01 previously assumed.
-
-**5. Small-sample caveat on the judged layer.** Faithfulness rests on n = 2, coaching quality and illegal-move rate on n = 3. The numbers are real, but the judged layer is thin — the faithfulness miss above should be treated as a signal to re-run at a larger sample, not as a confirmed regression, before drawing conclusions from it.
-
-*Follow-ups:* decide on a real primary model now that `gemini-1.5-flash` is retired (see caveat 1 — this affects `ARCHITECTURE.md`, `PLAN.md`, and `config/settings.py`, not just this report); pin the engine to remove the non-determinism band; raise the judged-layer sample count, particularly to re-check the sub-target faithfulness score; and add coverage for the router intent/fast-path, guardrail refusals, and memory persistence, which are not yet evaluated.
+**Two limitations apply.** These figures measure the fallback model rather than the configured
+primary, which is currently unavailable; and the engine does not repeat exactly, so detection
+figures carry a tolerance of about ±0.02.
 
 ---
 
@@ -291,66 +297,30 @@ Bucketed (production path) — this is how the application actually retrieves, w
 
 ## 7. Future Reflections
 
-### 7.1 What to Keep
-* **Stateful Graph Orchestration (LangGraph):** the conditional routing loops and state schema give
-  a robust, clean, and highly debuggable conversation flow (visible via LangSmith tracing).
-* **Deterministic Legality Verification (`python-chess`):** relying on a rules engine rather than an
-  LLM to check move legality is the single most critical guardrail, guaranteeing a 0% move
-  hallucination rate.
-* **Personalized coaching as the core value proposition** — today that personalization works
-  *within* a single conversation via the LangGraph checkpointer. A durable, cross-session learner
-  profile (one that survives a server restart and recognizes a returning user days later) is the
-  intended design and the product's whole point, but it is **not yet built** — there is no
-  `learner_profile` table or persistence layer in the code today, only the in-process checkpointer.
-  This is the most important open item from this reflection, not a shipped strength.
+### 7.1 What worked, and should stay
+* **Graph-based orchestration.** Routing and state are explicit and inspectable, which made both
+  debugging and later redesign straightforward.
+* **Rule-based move checking.** Using a chess engine rather than the language model to verify
+  legality is the single most valuable safeguard, and is why the hallucinated-move rate is zero.
+* **Grounding the narrative in engine facts.** Every claim traces back to something computed, not
+  something the model recalled.
 
-### 7.2 What to Change / Improve
-* **Vector Store Migration:** transition from the local ChromaDB instance to a managed vector
-  database (such as Qdrant or Pinecone) to ensure persistence, high concurrency, and low latency in
-  production.
-* **Granular Concept Sheet Chunking:** refine the chunking parser to extract smaller, highly
-  specific sub-sections of chess tactics (e.g., separating "relative pin" from "absolute pin") to
-  reduce RAG prompt overhead.
-* **API Gateway Abstraction:** standardize the LLM routing through a unified LiteLLM middleware
-  wrapper to simplify handling future model integrations and fallback policies — and, per §5's
-  caveat, to make swapping a retired model a config change instead of a code change.
-* **Build the durable learner profile** (carried over from §7.1): a SQLite table keyed by
-  `username`, updated after each review with rolling weakness-theme counts, read back in on a
-  return visit.
+### 7.2 What to change
+* **Build the durable learner profile.** Personalisation currently lasts one session. A returning
+  player starts over. This is the product's central promise and the most important thing still
+  missing.
+* **Move to a managed vector database** for persistence and concurrency in production.
+* **Chunk the reference material more finely,** so retrieval returns a specific idea rather than a
+  broad section.
+* **Route model choice through configuration,** so replacing a retired model is a settings change
+  rather than a code change.
 
-### 7.3 Commercial Vision & Product Opportunities
-Grandmate shifts the chess tech market from a simple post-game engine report into a valuable
-educational and competitive platform:
-* **The "Magnus Translator" (Amateur / Spectator Value):** translates complex computer lines into
-  plain-English strategic plans (e.g., *"White played a3 to stop Black's knight from occupying b4
-  and taking control of the queenside"*), making raw engine evaluations comprehensible.
-* **The Coaching & Platform Dashboard (B2B / Academy Value):** tracks player histories over months
-  in a learner profile database to highlight weaknesses (e.g., *"Johnny plays openings well, but has
-  a 45% blunder rate in King and Pawn endgames"*), helping coaches manage 20-30 students at scale —
-  this depends on the durable learner profile in §7.1/§7.2 being built.
-* **Opponent Scouting (Competitive Edge):** scans an opponent's recent games and suggests targeted
-  prep plans (e.g., *"Your opponent struggles against the Winawer variation; open with 1.e4"*).
-
-### 7.4 LLM Cost Economics & Hosting Strategy
-To minimize execution costs while maintaining accuracy, the system was designed around specific
-economic tiers:
-* **Cloud APIs:** originally costed against Gemini 1.5 Flash pricing ($0.075 / million input tokens,
-  $0.30 / million output tokens, ~$0.0004 USD per game review with zero idle costs). **That model has
-  since been retired by Google** (see §5 caveat 1) — every LLM call now runs on the `gpt-4o`
-  fallback, so this per-review cost figure needs re-costing against whatever model actually ends up
-  primary, not against a model that can no longer be called.
-* **Self-Hosted GPU (Llama 3 8B):** ~$0.50–$1.20/hour on GPU clouds. Break-even requires >1.5M
-  reviews/month to beat hosted-API pricing.
-* **Local Fine-Tuning Roadmap:** host smaller models (e.g., Llama 3.2 3B or Qwen 1.5B) on cheap CPU
-  servers ($5–$10/month) after gathering the first 5,000 high-quality reviews as training data.
-
-### 7.5 Active Tools vs. Scaling Architecture
-The prototype isolates local tools (Stockfish, python-chess) to ensure speed and a 0% move
-hallucination rate. Production scaling would incorporate external resources not active today:
-* **Lichess Opening Explorer:** query move frequency and win/loss ratios to ground opening strategy
-  advice in empirical database ratios. (Not implemented — see §5.1 row 7.)
-* **Tavily Web Search:** resolve non-board queries (e.g., historical players, tournaments) using
-  semantic web search to prevent factual hallucinations. (Not implemented.)
+### 7.3 Where the product could go
+* **Plain-English engine lines.** Translate computer analysis into the plan behind it — *"a3 stops
+  the knight coming to b4"* — which is the part most players cannot read for themselves.
+* **Coach and academy dashboards.** Track a student's weaknesses across months rather than one
+  game. Depends on the learner profile above.
+* **Opponent preparation.** Summarise an opponent's recent games into a short, targeted plan.
 
 ---
 
@@ -363,9 +333,9 @@ steps are planned.
 
 | Order | Item | Scope | Rationale |
 | --- | --- | --- | --- |
-| 1 | §8.5 Durable learner profile | Backend-only; ~half a day | The one piece the product's whole personalization pitch (§7.3) depends on. Smallest, most self-contained change of the five — a new SQLite table plus two integration points, no new UI. |
-| 2 | §8.1 Interactive chessboard | Frontend-only, no backend changes | Highest visible payoff per unit of effort for a demo; doesn't touch the graph or any of the systems this review just fact-checked. |
-| 3 | §8.2 Socratic tutor flow | New stateful LangGraph node + new specialist-style prompt | Meaningfully larger — needs its own place in the router→specialist→synthesizer topology (§4 of `ARCHITECTURE.md`), not just a UI addition. |
-| 4 | §8.3 Opponent scouting | New ingestion path (bulk game history) + new aggregation logic | Similar size to §8.2, plus a new external-data dependency (crawling a user's full game history, not just one game). |
-| 5 | §8.4 External search + cloud storage | Infrastructure migration (Qdrant) + two new external tool integrations (Tavily, Opening Explorer) | Broadens *breadth* of knowledge rather than deepening the core loop — lowest urgency for a demo, and the largest infrastructure lift of the five. |
+| 1 | Durable learner profile | Backend-only; ~half a day | The one piece the product's whole personalization pitch (§7.3) depends on. Smallest, most self-contained change of the five — a new SQLite table plus two integration points, no new UI. |
+| 2 | Interactive chessboard | Frontend-only, no backend changes | Highest visible payoff per unit of effort for a demo; doesn't touch the graph or any of the systems this review just fact-checked. |
+| 3 | Socratic tutor flow | New stateful LangGraph node + new specialist-style prompt | Meaningfully larger — needs its own place in the router-specialist-synthesizer topology (§4 of `ARCHITECTURE.md`), not just a UI addition. |
+| 4 | Opponent scouting | New ingestion path (bulk game history) + new aggregation logic | Similar size to the Socratic tutor flow, plus a new external-data dependency (crawling a user's full game history, not just one game). |
+| 5 | External search + cloud storage | Infrastructure migration (Qdrant) + two new external tool integrations (Tavily, Opening Explorer) | Broadens *breadth* of knowledge rather than deepening the core loop — lowest urgency for a demo, and the largest infrastructure lift of the five. |
 

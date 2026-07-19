@@ -165,6 +165,15 @@ def test_review_and_chat_session_continuity(mock_chat, mock_retrieve_context, mo
         if "Routing" in first_msg_content:
             return "none"
             
+        # Specialist agents (strategy/rules) — matched by their system prompt so this mock stays
+        # order-independent. Their replies are internal findings, not the user-facing reply, so
+        # they must not consume from reply_iter, which stands for the two synthesized answers
+        # this test actually asserts on (the review, then the chat follow-up).
+        if "Grandmaster-level Chess Strategist" in first_msg_content:
+            return "Strategic findings for the position."
+        if "Chess Rules Specialist" in first_msg_content:
+            return "NO_RULES_QUESTION"
+
         # Determine if it's the Judge query
         last_msg = messages[-1]
         msg_content = last_msg["content"] if isinstance(last_msg, dict) else last_msg.content

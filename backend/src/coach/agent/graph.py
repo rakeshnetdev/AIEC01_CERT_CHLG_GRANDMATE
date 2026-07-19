@@ -31,6 +31,14 @@ def append_logs(left: Optional[List[str]], right: Optional[List[str]]) -> List[s
         res.extend(right)
     return res
 
+def merge_rag_context(left: Optional[str], right: Optional[str]) -> str:
+    """Concatenates retrieved context. Needs to be a reducer, not a plain overwrite, because
+    strategy_node and rules_node can run in the same superstep (the "both" fan-out) and would
+    otherwise raise InvalidUpdateError for writing one key twice in a single step."""
+    parts = [p for p in (left, right) if p]
+    return "\n\n".join(parts)
+
+
 def append_agent_steps(left: Optional[List[dict]], right: Optional[List[dict]]) -> List[dict]:
     res = []
     if left:
@@ -46,12 +54,14 @@ class CoachState(TypedDict):
     pgn: Optional[str]
     game: Optional[Game]
     analyses: List[MoveAnalysis]
-    rag_context: str
+    rag_context: Annotated[str, merge_rag_context]
     output: str
     retriever_type: Optional[str]
     retry_count: Optional[int]
     grounding_log: Optional[List[dict]]
-    delegated_specialist: Optional[str]
+    # Written once per turn by router_agent_node and read immediately by its conditional edge.
+    # Not a persistent tracking field: the router is now entered exactly once per invocation.
+    dispatch_targets: List[str]
     strategy_findings: Optional[dict]
     rules_findings: Optional[dict]
     execution_logs: Annotated[List[str], append_logs]
@@ -147,49 +157,6 @@ def fetch_and_analyse_node(state: CoachState) -> dict:
             "prompt": prompt_desc,
             "response": f"Parsed game ({game.white} vs {game.black}, {game.result}). Ran Stockfish centipawn analysis on {len(analyses)} moves."
         }]
-    }
-
-
-def retrieve_rag_context_node(state: CoachState) -> dict:
-    """Retrieves tactical concept notes using the custom RAG pipeline."""
-    logger.info("Running retrieve_rag_context node")
-    game = state.get("game")
-    analyses = state.get("analyses", [])
-    retriever_type = state.get("retriever_type") or get_settings().retriever_type
-    
-    if not analyses:
-        return {}
-        
-    # Query using tactical themes identified
-    queries = []
-    for ma in analyses:
-        if ma.label != "ok" and ma.theme:
-            queries.append(ma.theme)
-            
-    if game and game.opening_name:
-        queries.append(game.opening_name)
-        
-    seen = set()
-    unique_queries = []
-    for q in queries:
-        if q not in seen:
-            seen.add(q)
-            unique_queries.append(q)
-            
-    settings = get_settings()
-    rag_parts = []
-    for q in unique_queries[:3]:
-        try:
-            results = retrieve_context(q, persist_dir=settings.chroma_db_path, limit=1, retriever_type=retriever_type)
-            for r in results:
-                rag_parts.append(r["text"])
-        except Exception as e:
-            logger.error(f"Error querying RAG for '{q}': {e}")
-            
-    rag_context = "\n\n".join(rag_parts)
-    return {
-        "rag_context": rag_context,
-        "execution_logs": [f"retrieve_rag_context: Pre-retrieved general game concepts. Queries: {unique_queries[:3]}. Retrieved {len(rag_parts)} RAG blocks."]
     }
 
 
@@ -351,79 +318,104 @@ def should_continue_guard(state: CoachState) -> str:
     return "continue"
 
 
+# Small talk the coach can answer without an LLM call. Matching is deliberately
+# whole-message (see _match_small_talk): a question that merely *opens* politely, like
+# "Hi, why was my move a blunder?", must still reach real classification.
+_SMALL_TALK_REPLIES = {
+    "greeting": (
+        "Hey! I'm here whenever you want to dig into your game — ask me about a "
+        "specific move, a mistake, or the opening, and I'll walk you through it."
+    ),
+    "thanks": (
+        "You're welcome! Happy to keep going whenever you want to look at another "
+        "moment in the game."
+    ),
+    "farewell": "Good luck in your next game — come back any time you want to review it!",
+}
+
+_SMALL_TALK_PHRASES = {
+    "greeting": {
+        "hi", "hii", "hiya", "hello", "helo", "hey", "heya", "yo", "sup", "howdy",
+        "good morning", "good afternoon", "good evening", "greetings",
+        "how are you", "how are you doing", "how r u", "how are u", "hows it going",
+        "how is it going", "whats up", "hi there", "hello there", "hey there",
+    },
+    "thanks": {
+        "thanks", "thank you", "thanx", "thx", "ty", "cheers", "thanks a lot",
+        "thank you so much", "thanks so much", "many thanks", "appreciate it",
+        "ok thanks", "okay thanks", "great thanks", "cool thanks", "nice thanks",
+        "got it thanks", "perfect thanks", "awesome thanks", "thanks buddy",
+    },
+    "farewell": {
+        "bye", "byee", "goodbye", "good bye", "see you", "see ya", "cya",
+        "good night", "goodnight", "gtg", "talk later", "see you later",
+    },
+}
+
+
+def _match_small_talk(text: str) -> Optional[str]:
+    """Returns a canned reply if the message is *purely* a greeting/thanks/farewell.
+
+    Matches on the whole normalised message rather than a prefix, so genuine questions
+    that happen to start politely still fall through to real intent classification.
+    """
+    normalised = re.sub(r"[^a-z\s]", "", (text or "").lower())
+    normalised = re.sub(r"\s+", " ", normalised).strip()
+    if not normalised:
+        return None
+    for category, phrases in _SMALL_TALK_PHRASES.items():
+        if normalised in phrases:
+            return _SMALL_TALK_REPLIES[category]
+    return None
+
+
+DISPATCH_END = "end"
+
+
 def router_agent_node(state: CoachState) -> dict:
-    """Coordinates and classifies the user intent to delegate to specialists."""
+    """Decides, in a single visit, which specialists this turn needs.
+
+    Entered exactly once per graph invocation. Because dispatch is always decided in one shot
+    (one specialist, both in parallel, or neither), the specialists no longer loop back here,
+    so there is no "what is left to run" state to track between visits.
+    """
     logger.info("Running router_agent node")
     messages = state.get("messages", [])
-    
+
+    # Initial review: no conversation yet. Strategy always runs; rules deliberately does not,
+    # since there is no rules question to answer on a plain game review. No LLM call.
     if not messages:
         return {
-            "delegated_specialist": None,
-            "execution_logs": ["router_agent: No messages present, skipping routing."],
+            "dispatch_targets": ["strategy"],
+            "execution_logs": ["router_agent: Initial review — dispatching to strategy specialist (0 LLM calls)."],
             "agent_steps": [{
                 "agent_name": "Router Agent",
-                "prompt": "(Skipped — no messages present)",
-                "response": "None (nothing to route)"
-            }]
-        }
-
-    has_strategy = state.get("strategy_findings") is not None
-    has_rules = state.get("rules_findings") is not None
-
-    # Both findings gathered — route to synthesizer
-    if has_strategy and has_rules:
-        logger.info("Both strategy and rules findings present. Routing to synthesizer.")
-        return {
-            "delegated_specialist": None,
-            "execution_logs": ["router_agent: Both findings gathered. Routing to synthesizer."],
-            "agent_steps": [{
-                "agent_name": "Router Agent",
-                "prompt": "(Fast-path — strategy and rules findings both gathered)",
-                "response": "synthesizer (both-gathered fast-path)"
-            }]
-        }
-    
-    # Only strategy done — route to rules next (no LLM call needed)
-    if has_strategy and not has_rules:
-        logger.info("Strategy findings present, routing to rules specialist.")
-        return {
-            "delegated_specialist": "rules",
-            "execution_logs": ["router_agent: Strategy done. Fast-routing to rules specialist."],
-            "agent_steps": [{
-                "agent_name": "Router Agent",
-                "prompt": "(Fast-path — strategy already gathered, routing to rules)",
-                "response": "rules (sequential fast-path)"
-            }]
-        }
-    
-    # Only rules done — route to strategy next (no LLM call needed)  
-    if has_rules and not has_strategy:
-        logger.info("Rules findings present, routing to strategy specialist.")
-        return {
-            "delegated_specialist": "strategy",
-            "execution_logs": ["router_agent: Rules done. Fast-routing to strategy specialist."],
-            "agent_steps": [{
-                "agent_name": "Router Agent",
-                "prompt": "(Fast-path — rules already gathered, routing to strategy)",
-                "response": "strategy (sequential fast-path)"
-            }]
-        }
-    
-    # Fast-path: initial review flow has no HumanMessage — skip LLM call and default to strategy
-    has_human_message = any(isinstance(m, HumanMessage) for m in messages)
-    if not has_human_message:
-        logger.info("No user message detected (initial review). Defaulting to strategy specialist.")
-        return {
-            "delegated_specialist": "strategy",
-            "execution_logs": ["router_agent: Initial review flow — skipping LLM, defaulting to strategy specialist."],
-            "agent_steps": [{
-                "agent_name": "Router Agent",
-                "prompt": "(Skipped — no user message in initial review)",
+                "prompt": "(Skipped — initial review, no user message)",
                 "response": "strategy (fast-path default)"
             }]
         }
-        
-    # Build prompt context
+
+    # Pure small talk ("hi", "thanks") — answer from a template and end the turn here.
+    # No LLM call, no specialist, and no grounding guard: a canned reply names no moves,
+    # so there is nothing for the legality check to verify.
+    last_human = next((m for m in reversed(messages) if isinstance(m, HumanMessage)), None)
+    if last_human is not None:
+        canned = _match_small_talk(last_human.content)
+        if canned:
+            logger.info("Router matched small talk. Replying from template with 0 LLM calls.")
+            return {
+                "dispatch_targets": [DISPATCH_END],
+                "output": canned,
+                "messages": [AIMessage(content=canned)],
+                "execution_logs": ["router_agent: Small talk matched. Canned reply, 0 LLM calls, skipped synthesis and grounding."],
+                "agent_steps": [{
+                    "agent_name": "Router Agent",
+                    "prompt": f"(Deterministic small-talk match on: {last_human.content!r})",
+                    "response": "small talk — canned reply, no LLM call"
+                }]
+            }
+
+    # A real question: classify intent once. "both" fans out to the two specialists in parallel.
     llm_messages = [{"role": "system", "content": ROUTER_SYSTEM_PROMPT}]
     for m in messages:
         if isinstance(m, HumanMessage):
@@ -431,35 +423,37 @@ def router_agent_node(state: CoachState) -> dict:
         elif isinstance(m, AIMessage):
             if not m.content.startswith("Grounding check:"):
                 llm_messages.append({"role": "assistant", "content": m.content})
-                
-    # Render prompt text for DevInsights tracing
+
     prompt_str = "\n".join([f"[{m['role'].upper()}]: {m['content']}" for m in llm_messages])
-    
+
     try:
         response = chat(messages=llm_messages)
         choice = response.strip().lower()
-        if "strategy" in choice:
-            delegated = "strategy"
+        # Check "both" first: it contains neither substring, but an LLM may answer
+        # "both" / "strategy and rules" / "rules and strategy" interchangeably.
+        if "both" in choice or ("strategy" in choice and "rules" in choice):
+            targets = ["strategy", "rules"]
+        elif "strategy" in choice:
+            targets = ["strategy"]
         elif "rules" in choice:
-            delegated = "rules"
+            targets = ["rules"]
         else:
-            delegated = None
+            targets = []
     except Exception as e:
         logger.error(f"Router Agent LLM error: {e}")
-        delegated = None
+        targets = []
         response = f"Failed with error: {e}"
-        
-    logger.info(f"Router Agent selected specialist: {delegated}")
+
+    logger.info(f"Router Agent dispatching to: {targets or 'synthesizer only'}")
     return {
-        "delegated_specialist": delegated,
-        "execution_logs": [f"router_agent: Classified intent. Selected specialist: '{delegated}'."],
+        "dispatch_targets": targets,
+        "execution_logs": [f"router_agent: Classified intent. Dispatching to: {targets or ['synthesizer']}."],
         "agent_steps": [{
             "agent_name": "Router Agent",
             "prompt": prompt_str,
             "response": response
         }]
     }
-
 
 
 def strategy_node(state: CoachState) -> dict:
@@ -512,7 +506,6 @@ def strategy_node(state: CoachState) -> dict:
     return {
         "strategy_findings": findings,
         "rag_context": new_rag,
-        "delegated_specialist": None,
         "execution_logs": [f"strategy_node: Retrieved {len(docs)} strategy documents from ChromaDB. Formulated strategy findings using the specialized agent prompt."],
         "agent_steps": [{
             "agent_name": "Strategy Specialist Agent",
@@ -567,7 +560,6 @@ def rules_node(state: CoachState) -> dict:
     return {
         "rules_findings": findings,
         "rag_context": new_rag,
-        "delegated_specialist": None,
         "execution_logs": [f"rules_node: Retrieved {len(docs)} rules documents from FIDE rulebook. Formulated rules findings using the rules specialist agent."],
         "agent_steps": [{
             "agent_name": "Rules Specialist Agent",
@@ -631,8 +623,6 @@ def synthesizer_node(state: CoachState) -> dict:
     return {
         "output": output,
         "messages": [AIMessage(content=output)],
-        "strategy_findings": None,
-        "rules_findings": None,
         "execution_logs": ["synthesizer_node: Fused strategy and rules findings into final Markdown coaching overview."],
         "agent_steps": [{
             "agent_name": "Synthesizer Agent",
@@ -642,15 +632,23 @@ def synthesizer_node(state: CoachState) -> dict:
     }
 
 
-def should_delegate(state: CoachState) -> str:
-    """Routes to the designated specialist node or to synthesis."""
-    specialist = state.get("delegated_specialist")
-    if specialist == "strategy":
-        return "strategy_node"
-    elif specialist == "rules":
-        return "rules_node"
-    else:
+def should_delegate(state: CoachState):
+    """Routes the router's one-shot decision to one specialist, both, or straight past them.
+
+    Returning a *list* of node names is how LangGraph fans out to parallel branches: both
+    specialists run in the same superstep, and because each has a fixed edge to
+    synthesizer_node, LangGraph runs the synthesizer once, after both have finished.
+    """
+    targets = state.get("dispatch_targets") or []
+    if DISPATCH_END in targets:
+        # Router already wrote the canned small-talk reply — nothing to synthesise or ground.
+        return END
+    nodes = [t + "_node" for t in targets if t in ("strategy", "rules")]
+    if not nodes:
         return "synthesizer_node"
+    if len(nodes) == 1:
+        return nodes[0]
+    return nodes
 
 
 def compile_coach_graph():
@@ -659,7 +657,6 @@ def compile_coach_graph():
     
     # Add nodes
     workflow.add_node("fetch_and_analyse", fetch_and_analyse_node)
-    workflow.add_node("retrieve_rag_context", retrieve_rag_context_node)
     workflow.add_node("router_agent", router_agent_node)
     workflow.add_node("strategy_node", strategy_node)
     workflow.add_node("rules_node", rules_node)
@@ -668,8 +665,7 @@ def compile_coach_graph():
     
     # Set execution edges
     workflow.set_entry_point("fetch_and_analyse")
-    workflow.add_edge("fetch_and_analyse", "retrieve_rag_context")
-    workflow.add_edge("retrieve_rag_context", "router_agent")
+    workflow.add_edge("fetch_and_analyse", "router_agent")
     
     # Router conditional edges
     workflow.add_conditional_edges(
@@ -678,13 +674,16 @@ def compile_coach_graph():
         {
             "strategy_node": "strategy_node",
             "rules_node": "rules_node",
-            "synthesizer_node": "synthesizer_node"
+            "synthesizer_node": "synthesizer_node",
+            END: END
         }
     )
     
-    # Loop back to router after specialists run to allow sequential execution
-    workflow.add_edge("strategy_node", "router_agent")
-    workflow.add_edge("rules_node", "router_agent")
+    # Specialists go straight to synthesis. No loop back to the router: dispatch is decided in
+    # one shot, so there is nothing left for a second router visit to decide. This is also what
+    # makes the "both" case a real parallel fan-out/fan-in rather than a sequential chain.
+    workflow.add_edge("strategy_node", "synthesizer_node")
+    workflow.add_edge("rules_node", "synthesizer_node")
     
     # Synthesizer runs to grounding guard
     workflow.add_edge("synthesizer_node", "grounding_guard")
