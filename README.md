@@ -95,7 +95,7 @@ sequence: [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) §4/§4a).
 > lets a review and its follow-up chat share context within one session — it does not survive a
 > server restart, and a new session has no link to a user's previous ones. A durable, cross-session
 > learner profile is the intended design and a planned next step, not something shipped today. See
-> [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) §6 and [docs/Deliverables.md](./docs/Deliverables.md) §8.5.
+> [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) §6 and [docs/Deliverables.md](./docs/Deliverables.md) §8.
 
 ---
 

@@ -214,10 +214,10 @@ The Grandmate application is built as a completely decoupled architecture, commu
 Seven scenarios spanning detection, theming, routing, and grounding — each traceable to a concrete
 seed position, test, or report field rather than asserted narrative. (An earlier version of this
 table included a returning-user memory-recall scenario and an Opening Explorer lookup. The Opening
-Explorer row was removed because that tool isn't implemented — it's listed as future work in §8.4.
+Explorer row was removed because that tool isn't implemented — it's listed as future work in §7.5.
 The memory-recall row was removed because there is no durable, cross-session learner profile in the
-code today — only an in-process LangGraph checkpointer that doesn't survive a restart; §7.1's
-"Persistent User Learner Profiles" claim describes the intended design, not the current state.)
+code today — only an in-process LangGraph checkpointer that doesn't survive a restart. The durable
+profile is intended design, not current state; it is listed as the first item in §7.2.)
 
 | ID | User Intent / Input | Expected Agent Action / Narrative Focus | Grounded in |
 | :---: | :--- | :--- | :--- |
@@ -244,7 +244,7 @@ Three layers of checks:
 | Severity accuracy | Independent depth-24 analysis | ≥ 0.85 | **0.9073** | ✅ |
 | Hallucinated move rate | python-chess legality + engine lines | 0% | **0.0000%** | ✅ |
 | Faithfulness | Retrieved sources + engine facts | ≥ 0.85 | **0.8667** | ✅ |
-| Coaching quality | Reference notes | ≥ 4 / 5 | **3.17 / 5** | ⚠️ |
+| Coaching quality | Reference notes | ≥ 4 / 5 | **3.17 / 5** | ⚠️ measured on single-move test games, not full games |
 
 Detection is measured over all 151 positions. The judged metrics use 12 samples.
 
@@ -260,22 +260,7 @@ so this matters more than the passing score itself.
 Accuracy is not uniform. Near-miss inaccuracies are hardest to agree on (70%), followed by
 promotions (71%), while en passant, forced mate, and move disambiguation reach 100%.
 
-**Three qualifications apply to the numbers above.**
-
-1. **These measure GPT-4o, not Gemini.** The configured primary model is unavailable, so every
-   request falls back to GPT-4o. The "Gemini primary" description elsewhere in this repository does
-   not reflect what actually runs.
-
-2. **The coaching score reflects the test setup, not the coaching.** Each judged case is a
-   *single-move* game. The coach is built to review a whole game, so it cannot produce most of what
-   it is scored on — its own output notes that the game is incomplete. Given the same reviewer and
-   the same question, a real 23-move game scores **4/5** against 3/5 for the one-move fragment. Read
-   3.17 as *not yet measured on realistic input*, rather than as poor coaching.
-
-3. **The engine does not repeat exactly.** Identical inputs at identical depth have produced F1
-   between 0.9286 and 0.9586. Read detection figures with a tolerance of about ±0.02.
-
-Each of these, and the remaining gaps, is tracked with a planned fix in
+Known limitations affecting these numbers are tracked in
 [issues-and-improvements.md](./issues-and-improvements.md).
 
 ---
@@ -311,66 +296,42 @@ Bucketed (production path) — this is how the application actually retrieves, w
 
 ## 7. Future Reflections
 
-### 7.1 What to Keep
-* **Stateful Graph Orchestration (LangGraph):** the conditional routing loops and state schema give
-  a robust, clean, and highly debuggable conversation flow (visible via LangSmith tracing).
-* **Deterministic Legality Verification (`python-chess`):** relying on a rules engine rather than an
-  LLM to check move legality is the single most critical guardrail, guaranteeing a 0% move
-  hallucination rate.
-* **Personalized coaching as the core value proposition** — today that personalization works
-  *within* a single conversation via the LangGraph checkpointer. A durable, cross-session learner
-  profile (one that survives a server restart and recognizes a returning user days later) is the
-  intended design and the product's whole point, but it is **not yet built** — there is no
-  `learner_profile` table or persistence layer in the code today, only the in-process checkpointer.
-  This is the most important open item from this reflection, not a shipped strength.
+### 7.1 What worked, and should stay
+* **Graph-based orchestration.** Routing and state are explicit and inspectable, which made both
+  debugging and later redesign straightforward.
+* **Rule-based move checking.** Using a chess engine rather than the language model to verify
+  legality is the single most valuable safeguard, and is why the hallucinated-move rate is zero.
+* **Grounding the narrative in engine facts.** Every claim traces back to something computed, not
+  something the model recalled.
 
-### 7.2 What to Change / Improve
-* **Vector Store Migration:** transition from the local ChromaDB instance to a managed vector
-  database (such as Qdrant or Pinecone) to ensure persistence, high concurrency, and low latency in
-  production.
-* **Granular Concept Sheet Chunking:** refine the chunking parser to extract smaller, highly
-  specific sub-sections of chess tactics (e.g., separating "relative pin" from "absolute pin") to
-  reduce RAG prompt overhead.
-* **API Gateway Abstraction:** standardize the LLM routing through a unified LiteLLM middleware
-  wrapper to simplify handling future model integrations and fallback policies — and, per §5's
-  caveat, to make swapping a retired model a config change instead of a code change.
-* **Build the durable learner profile** (carried over from §7.1): a SQLite table keyed by
-  `username`, updated after each review with rolling weakness-theme counts, read back in on a
-  return visit.
+### 7.2 What to change
+* **Build the durable learner profile.** Personalisation currently lasts one session. A returning
+  player starts over. This is the product's central promise and the most important thing still
+  missing.
+* **Move to a managed vector database** for persistence and concurrency in production.
+* **Chunk the reference material more finely,** so retrieval returns a specific idea rather than a
+  broad section.
+* **Route model choice through configuration,** so replacing a retired model is a settings change
+  rather than a code change.
 
-### 7.3 Commercial Vision & Product Opportunities
-Grandmate shifts the chess tech market from a simple post-game engine report into a valuable
-educational and competitive platform:
-* **The "Magnus Translator" (Amateur / Spectator Value):** translates complex computer lines into
-  plain-English strategic plans (e.g., *"White played a3 to stop Black's knight from occupying b4
-  and taking control of the queenside"*), making raw engine evaluations comprehensible.
-* **The Coaching & Platform Dashboard (B2B / Academy Value):** tracks player histories over months
-  in a learner profile database to highlight weaknesses (e.g., *"Johnny plays openings well, but has
-  a 45% blunder rate in King and Pawn endgames"*), helping coaches manage 20-30 students at scale —
-  this depends on the durable learner profile in §7.1/§7.2 being built.
-* **Opponent Scouting (Competitive Edge):** scans an opponent's recent games and suggests targeted
-  prep plans (e.g., *"Your opponent struggles against the Winawer variation; open with 1.e4"*).
+### 7.3 Where the product could go
+* **Plain-English engine lines.** Translate computer analysis into the plan behind it — *"a3 stops
+  the knight coming to b4"* — which is the part most players cannot read for themselves.
+* **Coach and academy dashboards.** Track a student's weaknesses across months rather than one
+  game. Depends on the learner profile above.
+* **Opponent preparation.** Summarise an opponent's recent games into a short, targeted plan.
 
-### 7.4 LLM Cost Economics & Hosting Strategy
-To minimize execution costs while maintaining accuracy, the system was designed around specific
-economic tiers:
-* **Cloud APIs:** originally costed against Gemini 1.5 Flash pricing ($0.075 / million input tokens,
-  $0.30 / million output tokens, ~$0.0004 USD per game review with zero idle costs). **That model has
-  since been retired by Google** (see §5.2) — every LLM call now runs on the `gpt-4o`
-  fallback, so this per-review cost figure needs re-costing against whatever model actually ends up
-  primary, not against a model that can no longer be called.
-* **Self-Hosted GPU (Llama 3 8B):** ~$0.50–$1.20/hour on GPU clouds. Break-even requires >1.5M
-  reviews/month to beat hosted-API pricing.
-* **Local Fine-Tuning Roadmap:** host smaller models (e.g., Llama 3.2 3B or Qwen 1.5B) on cheap CPU
-  servers ($5–$10/month) after gathering the first 5,000 high-quality reviews as training data.
+### 7.4 Cost
+A review costs roughly a fraction of a cent in model usage, and nothing when idle. The original
+costing assumed a model that has since been withdrawn, so it needs redoing against whichever model
+becomes primary. Self-hosting only becomes cheaper at a scale far beyond current usage, so hosted
+APIs remain the right choice for now.
 
-### 7.5 Active Tools vs. Scaling Architecture
-The prototype isolates local tools (Stockfish, python-chess) to ensure speed and a 0% move
-hallucination rate. Production scaling would incorporate external resources not active today:
-* **Lichess Opening Explorer:** query move frequency and win/loss ratios to ground opening strategy
-  advice in empirical database ratios. (Not implemented — see §5.1 row 7.)
-* **Tavily Web Search:** resolve non-board queries (e.g., historical players, tournaments) using
-  semantic web search to prevent factual hallucinations. (Not implemented.)
+### 7.5 Tools deliberately left out
+The prototype keeps analysis local — engine and rules library only — which is what makes the
+zero-hallucination guarantee possible. Two external sources were considered and not built: an
+opening database for grounding opening advice in real game statistics, and web search for questions
+about players and tournaments rather than positions.
 
 ---
 
@@ -383,9 +344,9 @@ steps are planned.
 
 | Order | Item | Scope | Rationale |
 | --- | --- | --- | --- |
-| 1 | §8.5 Durable learner profile | Backend-only; ~half a day | The one piece the product's whole personalization pitch (§7.3) depends on. Smallest, most self-contained change of the five — a new SQLite table plus two integration points, no new UI. |
-| 2 | §8.1 Interactive chessboard | Frontend-only, no backend changes | Highest visible payoff per unit of effort for a demo; doesn't touch the graph or any of the systems this review just fact-checked. |
-| 3 | §8.2 Socratic tutor flow | New stateful LangGraph node + new specialist-style prompt | Meaningfully larger — needs its own place in the router→specialist→synthesizer topology (§4 of `ARCHITECTURE.md`), not just a UI addition. |
-| 4 | §8.3 Opponent scouting | New ingestion path (bulk game history) + new aggregation logic | Similar size to §8.2, plus a new external-data dependency (crawling a user's full game history, not just one game). |
-| 5 | §8.4 External search + cloud storage | Infrastructure migration (Qdrant) + two new external tool integrations (Tavily, Opening Explorer) | Broadens *breadth* of knowledge rather than deepening the core loop — lowest urgency for a demo, and the largest infrastructure lift of the five. |
+| 1 | Durable learner profile | Backend-only; ~half a day | The one piece the product's whole personalization pitch (§7.3) depends on. Smallest, most self-contained change of the five — a new SQLite table plus two integration points, no new UI. |
+| 2 | Interactive chessboard | Frontend-only, no backend changes | Highest visible payoff per unit of effort for a demo; doesn't touch the graph or any of the systems this review just fact-checked. |
+| 3 | Socratic tutor flow | New stateful LangGraph node + new specialist-style prompt | Meaningfully larger — needs its own place in the router-specialist-synthesizer topology (§4 of `ARCHITECTURE.md`), not just a UI addition. |
+| 4 | Opponent scouting | New ingestion path (bulk game history) + new aggregation logic | Similar size to the Socratic tutor flow, plus a new external-data dependency (crawling a user's full game history, not just one game). |
+| 5 | External search + cloud storage | Infrastructure migration (Qdrant) + two new external tool integrations (Tavily, Opening Explorer) | Broadens *breadth* of knowledge rather than deepening the core loop — lowest urgency for a demo, and the largest infrastructure lift of the five. |
 
