@@ -84,8 +84,11 @@ specialists each answer from their own corpus bucket; a **synthesizer** fuses th
 single answer the user reads; the **grounding guard** re-checks every move named and loops back with a
 critique if anything is unverified. The router is deliberately cheap — it decides deterministically
 wherever the state already implies the next hop, and calls the LLM only for genuine intent
-classification: **0 LLM calls on `/review`, 1 on `/chat`** (before/after diagrams and the full
-end-to-end request sequence: [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) §4/§4a).
+classification: **0 LLM calls on `/review`, 1 on `/chat`, and 0 for pure small talk** ("hi",
+"thanks" — answered from a template, skipping synthesis and the grounding guard). The router is
+entered once per turn and dispatches in one shot; a question that genuinely needs both specialists
+runs them **in parallel** rather than chaining them (diagrams and the full end-to-end request
+sequence: [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) §4/§4a).
 
 > **Memory caveat.** "Memory" today means conversation-scoped state (a LangGraph checkpointer) that
 > lets a review and its follow-up chat share context within one session — it does not survive a

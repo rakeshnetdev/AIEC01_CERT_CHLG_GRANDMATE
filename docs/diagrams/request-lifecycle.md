@@ -48,8 +48,9 @@ sequenceDiagram
 
 ## Flow B: `POST /chat` (follow-up question)
 
-Router LLM cost: **1 call** — the first router visit does real intent classification; the
-loop-back after the first specialist is a free, deterministic hop to the second one.
+Router LLM cost: **1 call** — the router is entered once and classifies intent in that single
+visit, then dispatches to one specialist, both in parallel, or neither. Pure small talk is matched
+deterministically and costs **0 calls**, skipping synthesis and the grounding guard entirely.
 
 ```mermaid
 sequenceDiagram
