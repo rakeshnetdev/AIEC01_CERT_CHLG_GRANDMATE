@@ -105,12 +105,14 @@ flowchart TD
     FETCH --> ROUTE{Router Agent}
 
     ROUTE -- "small talk (0 LLM calls)" --> DONE([Canned reply — ends turn])
-    ROUTE -- "delegate (strategy)" --> STRAT[strategy_node]
-    ROUTE -- "delegate (rules)" --> RULES[rules_node]
-    ROUTE -- "done / direct" --> SYNTH[synthesizer_node]
+    ROUTE -- "strategy only" --> STRAT[strategy_node]
+    ROUTE -- "rules only" --> RULES[rules_node]
+    ROUTE -- "both (parallel fan-out)" --> STRAT
+    ROUTE -- "both (parallel fan-out)" --> RULES
+    ROUTE -- "neither needed" --> SYNTH[synthesizer_node]
 
-    STRAT --> ROUTE
-    RULES --> ROUTE
+    STRAT --> SYNTH
+    RULES --> SYNTH
 
     SYNTH --> GUARD{Grounding Guard}
     GUARD -- approved --> WEAK[Top weaknesses]
@@ -188,7 +190,7 @@ The Grandmate application is built as a completely decoupled architecture, commu
 ### 4.2 Backend Stack (FastAPI + Python)
 * **What it does:** Executes the heavy analytical logic, manages agent memory, retrieves context, and validates narration outputs.
 * **Key Features:**
-  * **LangGraph Multi-Agent Orchestration:** Coordinates the stateful workflow nodes (`fetch_and_analyse` → `router_agent` → `strategy_node` / `rules_node` → `synthesizer_node` → `grounding_guard`), with specialists looping back to the router so it can sequence them, and the router deciding without an LLM call wherever state already implies the next hop.
+  * **LangGraph Multi-Agent Orchestration:** Coordinates the stateful workflow nodes (`fetch_and_analyse` → `router_agent` → `strategy_node` / `rules_node` → `synthesizer_node` → `grounding_guard`), with the router deciding dispatch in a single visit per turn — one specialist, both in parallel (fan-out/fan-in on `synthesizer_node`), or neither — and deciding without an LLM call wherever state already implies the answer. Specialist findings persist across turns as background context.
   * **Dual-Mode Grounding Guard:**
     * *Option A (Deterministic):* Scans narrative outputs using SAN regex and checks move validity on `python-chess.Board` structures. Always active for chat messages (~5ms execution).
     * *Option B (LLM-as-a-Judge):* Evaluates the strategic correctness of the output text (e.g., detecting if a pin is mislabeled as a fork) and outputs JSON feedback to trigger rewrite loops.

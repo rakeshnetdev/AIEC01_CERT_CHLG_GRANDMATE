@@ -1,17 +1,17 @@
 import pytest
 from unittest.mock import patch, MagicMock, ANY
-from coach.agent.graph import compile_coach_graph, should_delegate
+from coach.agent.graph import compile_coach_graph, should_delegate, DISPATCH_END
+from langgraph.graph import END
 from coach.schemas.models import Game, MoveAnalysis
 from langchain_core.messages import HumanMessage, AIMessage
 
 @patch("coach.agent.graph.retrieve_context")
 @patch("coach.agent.graph.chat")
 def test_router_delegates_to_rules(mock_chat, mock_retrieve_context):
-    # Router picks 'rules' first, then fast-paths to strategy, then synthesizer
+    # One-shot dispatch: router classifies "rules", only rules_node runs, then synthesis.
     mock_chat.side_effect = [
         "rules",      # Router LLM decision
         "Stalemate is a draw according to FIDE rules.",  # Rules Specialist answer
-        "Strategy analysis for the position.",  # Strategy Specialist answer (auto-chained)
         "Compiled response explaining stalemate rules." # Synthesizer answer
     ]
     
@@ -55,11 +55,10 @@ def test_router_delegates_to_rules(mock_chat, mock_retrieve_context):
 @patch("coach.agent.graph.retrieve_context")
 @patch("coach.agent.graph.chat")
 def test_router_delegates_to_strategy(mock_chat, mock_retrieve_context):
-    # Router picks 'strategy' first, then fast-paths to rules, then synthesizer
+    # One-shot dispatch: router classifies "strategy", only strategy_node runs, then synthesis.
     mock_chat.side_effect = [
         "strategy",      # Router LLM decision
         "This move was a blunder because it drops the knight.",  # Strategy Specialist answer
-        "Rules analysis for the position.",  # Rules Specialist answer (auto-chained)
         "Compiled tactical response." # Synthesizer answer
     ]
     
@@ -103,15 +102,17 @@ def test_router_delegates_to_strategy(mock_chat, mock_retrieve_context):
 
 
 def test_should_delegate_helper():
-    # Test should_delegate edge routing function
-    state_strategy = {"delegated_specialist": "strategy"}
-    assert should_delegate(state_strategy) == "strategy_node"
+    # should_delegate maps the router's one-shot decision onto the next node(s).
+    assert should_delegate({"dispatch_targets": ["strategy"]}) == "strategy_node"
+    assert should_delegate({"dispatch_targets": ["rules"]}) == "rules_node"
+    assert should_delegate({"dispatch_targets": []}) == "synthesizer_node"
+    assert should_delegate({}) == "synthesizer_node"
 
-    state_rules = {"delegated_specialist": "rules"}
-    assert should_delegate(state_rules) == "rules_node"
+    # "both" returns a list - that is how LangGraph fans out to parallel branches.
+    assert should_delegate({"dispatch_targets": ["strategy", "rules"]}) == ["strategy_node", "rules_node"]
 
-    state_none = {"delegated_specialist": None}
-    assert should_delegate(state_none) == "synthesizer_node"
+    # small talk ends the turn without synthesis or grounding
+    assert should_delegate({"dispatch_targets": [DISPATCH_END]}) == END
 
 
 @patch("coach.agent.graph.retrieve_context")
@@ -181,9 +182,8 @@ def test_small_talk_short_circuits_with_zero_llm_calls(mock_chat, mock_retrieve_
 def test_polite_opener_still_reaches_classification(mock_chat, mock_retrieve_context):
     # Regression guard: the small-talk allowlist must not swallow a real question that
     # merely opens politely. This is the failure mode that would silently break coaching.
-    # router classification -> strategy_node -> (loop-back fast-path) rules_node -> synthesizer.
-    # The rules hop is today's sequential loop-back behaviour; step 4 replaces it.
-    mock_chat.side_effect = ["strategy", "Strategy findings.", "Rules findings.", "Compiled answer."]
+    # router classification -> strategy_node -> synthesizer (one-shot dispatch, no loop-back)
+    mock_chat.side_effect = ["strategy", "Strategy findings.", "Compiled answer."]
     mock_retrieve_context.return_value = [
         {"id": "s1", "text": "Sicilian ideas.",
          "metadata": {"bucket": "strategies", "source": "strategy.md"}}
@@ -195,3 +195,67 @@ def test_polite_opener_still_reaches_classification(mock_chat, mock_retrieve_con
 
     assert mock_chat.called, "a real question must still reach LLM classification"
     assert final_state["output"] == "Compiled answer."
+
+
+@patch("coach.agent.graph.retrieve_context")
+@patch("coach.agent.graph.chat")
+def test_findings_persist_across_turns(mock_chat, mock_retrieve_context):
+    # The synthesizer no longer wipes findings, so a review's strategy work stays available
+    # as background context for later chat turns in the same thread.
+    mock_chat.side_effect = ["Strategy findings.", "Review reply.", "strategy",
+                             "Follow-up findings.", "Chat reply."]
+    mock_retrieve_context.return_value = [
+        {"id": "s1", "text": "ideas.", "metadata": {"bucket": "strategies", "source": "s.md"}}
+    ]
+    graph = compile_coach_graph()
+    config = {"configurable": {"thread_id": "test_persist"}}
+
+    review_inputs, _ = _greeting_inputs("ignored", "test_persist")
+    review_inputs["messages"] = []
+    review_state = graph.invoke(review_inputs, config=config)
+    assert review_state["strategy_findings"] is not None, "review should produce findings"
+
+    chat_state = graph.invoke({"messages": [HumanMessage(content="why was that bad?")]},
+                              config=config)
+    assert chat_state["strategy_findings"] is not None, "findings must survive the turn"
+
+
+@patch("coach.agent.graph.retrieve_context")
+@patch("coach.agent.graph.chat")
+def test_router_runs_exactly_once_per_turn(mock_chat, mock_retrieve_context):
+    # Proves the loop-back is gone: with it, the router was re-entered after each specialist.
+    mock_chat.side_effect = ["Strategy findings.", "Review reply."]
+    mock_retrieve_context.return_value = [
+        {"id": "s1", "text": "ideas.", "metadata": {"bucket": "strategies", "source": "s.md"}}
+    ]
+    graph = compile_coach_graph()
+
+    inputs, config = _greeting_inputs("ignored", "test_router_once")
+    inputs["messages"] = []
+    final_state = graph.invoke(inputs, config=config)
+
+    router_steps = [s for s in final_state["agent_steps"] if s["agent_name"] == "Router Agent"]
+    assert len(router_steps) == 1, f"router ran {len(router_steps)}x, expected once"
+
+
+@patch("coach.agent.graph.retrieve_context")
+@patch("coach.agent.graph.chat")
+def test_both_specialists_dispatch_in_parallel(mock_chat, mock_retrieve_context):
+    # A "both" classification fans out to the two specialists in a single superstep. Combined
+    # with the router-runs-once assertion, both findings can only have come from one fan-out.
+    mock_chat.side_effect = ["both", "Strategy findings.", "Rules findings.", "Combined reply."]
+    mock_retrieve_context.return_value = [
+        {"id": "x", "text": "ctx.", "metadata": {"bucket": "strategies", "source": "s.md"}}
+    ]
+    graph = compile_coach_graph()
+
+    inputs, config = _greeting_inputs("was castling legal there, and was it a good idea?",
+                                      "test_both_parallel")
+    final_state = graph.invoke(inputs, config=config)
+
+    assert final_state["strategy_findings"] is not None
+    assert final_state["rules_findings"] is not None
+    router_steps = [s for s in final_state["agent_steps"] if s["agent_name"] == "Router Agent"]
+    assert len(router_steps) == 1, "both specialists must come from one fan-out, not a chain"
+    buckets = [c.kwargs.get("bucket") for c in mock_retrieve_context.call_args_list]
+    assert "strategies" in buckets and "rules" in buckets

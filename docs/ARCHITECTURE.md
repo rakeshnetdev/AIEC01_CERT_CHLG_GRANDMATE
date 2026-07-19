@@ -79,12 +79,14 @@ flowchart TD
     FETCH --> ROUTE{Router Agent}
 
     ROUTE -- "small talk (0 LLM calls)" --> DONE([Canned reply — ends turn])
-    ROUTE -- "delegate (strategy)" --> STRAT[strategy_node]
-    ROUTE -- "delegate (rules)" --> RULES[rules_node]
-    ROUTE -- "done / direct" --> SYNTH[synthesizer_node]
+    ROUTE -- "strategy only" --> STRAT[strategy_node]
+    ROUTE -- "rules only" --> RULES[rules_node]
+    ROUTE -- "both (parallel fan-out)" --> STRAT
+    ROUTE -- "both (parallel fan-out)" --> RULES
+    ROUTE -- "neither needed" --> SYNTH[synthesizer_node]
 
-    STRAT --> ROUTE
-    RULES --> ROUTE
+    STRAT --> SYNTH
+    RULES --> SYNTH
 
     SYNTH --> GUARD{Grounding Guard}
     GUARD -- approved --> WEAK[Top weaknesses]
@@ -101,7 +103,7 @@ flowchart TD
 synthesizer** team: `router_agent_node` classifies intent and delegates, `strategy_node` and
 `rules_node` each own one domain and one corpus bucket, and `synthesizer_node` fuses their findings
 into the one answer the user reads. Specialists loop back to the router so it can sequence them; the
-`should_delegate` conditional edge maps `delegated_specialist` onto the next node.
+`should_delegate` conditional edge maps the router's `dispatch_targets` onto the next node — or onto *both* specialist nodes at once, by returning a list, which is how LangGraph fans out to parallel branches. The router is entered exactly once per invocation; specialists edge straight to `synthesizer_node` rather than looping back.
 
 **Router fast-pathing.** `router_agent_node` decides *deterministically* wherever the outcome is
 already implied by state, and only calls the LLM for genuine intent classification:

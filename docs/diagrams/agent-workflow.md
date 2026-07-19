@@ -9,12 +9,14 @@ flowchart TD
     FETCH --> ROUTE{Router Agent}
 
     ROUTE -- "small talk (0 LLM calls)" --> DONE([Canned reply — ends turn])
-    ROUTE -- "delegate (strategy)" --> STRAT[strategy_node]
-    ROUTE -- "delegate (rules)" --> RULES[rules_node]
-    ROUTE -- "done / direct" --> SYNTH[synthesizer_node]
+    ROUTE -- "strategy only" --> STRAT[strategy_node]
+    ROUTE -- "rules only" --> RULES[rules_node]
+    ROUTE -- "both (parallel fan-out)" --> STRAT
+    ROUTE -- "both (parallel fan-out)" --> RULES
+    ROUTE -- "neither needed" --> SYNTH[synthesizer_node]
 
-    STRAT --> ROUTE
-    RULES --> ROUTE
+    STRAT --> SYNTH
+    RULES --> SYNTH
 
     SYNTH --> GUARD{Grounding Guard}
     GUARD -- approved --> WEAK[Top weaknesses]
