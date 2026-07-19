@@ -81,20 +81,54 @@ next. Already scoped as future work.
 
 ## 2. Evaluation
 
-### 2.1 Coaching quality is below target 🔴
+### 2.1 The coaching-quality score mostly measures the wrong thing 🔴
 
 | Metric | Result | Target |
 |---|---|---|
 | Coaching quality | 3.17 / 5 (n = 12) | ≥ 4.0 |
 
-This is the one headline metric failing, and it is now **confirmed rather than suspected**. It was
-previously measured on three examples, where scores ranged from 3.33 to 4.00 and straddled the
-target. Re-measured on twelve, it settles at 3.17 — below target with no ambiguity.
+This is the one headline metric below target. Investigating it showed the score is mostly an
+artefact of how the evaluation is set up, not a fair measure of the coaching.
 
-It scored no better before the latest round of work, so this is a standing gap, not a regression.
+**The evaluation feeds the coach a single move, not a game.** Each test case is built as a
+one-move game from a starting position. The coach is designed to review a whole game — summarise
+how it went, point out what the player did well, identify mistakes, and draw out a theme. Given one
+move it can do almost none of that, and says so in its own output: *"the game was incomplete"* and
+*"there are no specific strong moves to highlight"*. An entire section of the response is
+structurally empty.
 
-**Next step:** investigate the coaching prompt. The measurement is now trustworthy enough to act
-on, which it was not before.
+**The same judge scores a real game higher.** Using the identical prompt:
+
+| What the judge was given | Score |
+|---|---|
+| A one-move fragment (what the evaluation sends) | 3 / 5 |
+| A real 23-move game (what a user actually sends) | 4 / 5 |
+
+On the real game the response named three specific good moves, one mistake with the better
+alternative and the reason, and two improvement themes drawn from the game. That is the product
+working as intended, and it meets the target.
+
+**Two smaller problems compound it.**
+
+- *The judge has no scoring guide.* It is asked for a score from 1 to 5 with no description of what
+  each number means. Asked to explain itself, it produced generic suggestions rather than specific
+  faults. Scores cluster tightly on 3, which is what an unanchored judge tends to return.
+- *Some of what the judge rewards, the product deliberately refuses to do.* Asked what would earn a
+  5, the judge suggested praising creative attempts and describing how unconventional moves can
+  work out. Both require speculating beyond what the engine verified, which the grounding rules
+  forbid. The coach is being marked down for following its own most important rule.
+
+**Fix, in order:**
+
+1. Evaluate on real multi-move games, so the coach is asked to do the job it was built for.
+   Single-move cases can stay for mistake detection, which they suit, but should not feed the
+   coaching score.
+2. Give the judge an explicit scoring guide describing what each score means.
+3. Align the judge's criteria with the grounding rules, so it stops rewarding speculation.
+
+Until step 1 is done, **treat 3.17 as a measurement artefact rather than a product result.** The
+honest summary is that coaching quality on realistic input is untested at scale, not that it is
+poor.
 
 ### 2.2 The judged sample is too small to draw conclusions from 🔴
 
@@ -148,7 +182,7 @@ only as user-visible symptoms.
 | 2 | Raise the *default* judged sample size | Done ad hoc at n = 12; the default is still 3, so the next run silently reverts to untrustworthy numbers |
 | 3 | Pin the engine to one thread and re-measure | Restores reproducibility, which the detection metrics assume |
 | 4 | Skip re-analysis on chat turns | Largest remaining latency win, low risk |
-| 5 | Investigate the coaching-quality gap | Now actionable — confirmed at n = 12, no longer within noise |
+| 5 | Evaluate coaching on real games, not one-move fragments | The current 3.17 mostly measures an input the product never receives |
 | 6 | Decide the fate of the retriever setting | Product decision; currently misleading in the UI |
 | 7 | Add a durable learner profile | Largest new capability, but depends on nothing above |
 

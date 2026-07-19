@@ -241,7 +241,7 @@ The test suite utilizes a three-tier evaluation setup aligned directly with the 
 | **Severity Accuracy** | Independent depth-24 oracle | ≥ 0.85 | **0.9073** | ✅ Pass |
 | **Hallucinated Move Rate** | python-chess + PV check | 0% | **0.0000%** | ✅ Pass |
 | **RAGAS Faithfulness** | Grounded concepts + engine facts | ≥ 0.85 | **0.8667** | ✅ Pass |
-| **LLM-Judge Helping Quality** | Reference notes | ≥ 4 / 5 | **3.17 / 5** | ❌ Fail |
+| **LLM-Judge Helping Quality** | Reference notes | ≥ 4 / 5 | **3.17 / 5** | ⚠️ Measurement artefact — see below |
 
 Detection is measured over all 151 positions. The judged metrics are measured at **n = 12**,
 raised from the previous n = 3 specifically because the smaller sample was too unstable to draw
@@ -254,13 +254,24 @@ both directions. At n = 12 both settle:
 | Metric | At n = 3 (across runs) | At n = 12 | Reading |
 |---|---|---|---|
 | RAGAS Faithfulness | 0.75 – 1.00 | **0.8667** | Passes, but only just — the earlier 1.00 was small-sample luck, not a real result |
-| LLM-Judge Helping Quality | 3.33 – 4.00 | **3.17** | **A confirmed miss.** Previously ambiguous; the larger sample settles it below target |
+| LLM-Judge Helping Quality | 3.33 – 4.00 | **3.17** | Stable, but see the caveat below — the score reflects the harness input, not the coaching |
 
 Detection still varies run to run (F1 has measured 0.9286 – 0.9586 on identical inputs) because the
 engine is not reproducible; read those figures with a tolerance of about ±0.02 rather than as exact
 values.
 
-The coaching-quality miss and the engine non-determinism are tracked, with fixes, in
+**The coaching-quality figure does not mean what it appears to.** Each judged case is built as a
+*single-move* game. The coach is designed to review a whole game, so on a one-move input it cannot
+produce most of what it is scored on — its own output says "the game was incomplete" and leaves the
+"what went well" section empty. Given the identical judge and prompt, a **real 23-move game scores
+4/5**, against 3/5 for the one-move fragment the harness sends.
+
+So `3.17` is best read as *coaching quality has not been measured on realistic input*, rather than
+as a product shortfall. Two further factors compound it: the judge is given no description of what
+each score means, and some of what it rewards — praising creative attempts, speculating on how
+unconventional moves might work out — is exactly what the grounding rules forbid.
+
+This, the engine non-determinism, and the remaining gaps are tracked with fixes in
 [issues-and-improvements.md](./issues-and-improvements.md) §2.
 
 Measured from `evals/report.py`; raw output retained in `evals/report.json`. The evaluation harness was rebuilt after an audit found the previous version measured nothing; the design and the implementation outcome are recorded in [synthetic_data_and_eval_design.md](./synthetic_data_and_eval_design.md).
