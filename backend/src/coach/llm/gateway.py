@@ -43,17 +43,19 @@ def chat(messages: List[Dict[str, str]], model: str | None = None, **kw) -> str:
                 **kw
             )
             return response.choices[0].message.content
-        except litellm.exceptions.RateLimitError as e:
-            if attempt < 3:
-                sleep_time = (attempt + 1) * 10.0
-                print(f"RateLimitError encountered. Retrying in {sleep_time:.1f}s... (Attempt {attempt+1}/4)")
-                time.sleep(sleep_time)
-            else:
-                raise e
         except Exception as e:
-            # If the primary model fails (due to 404, quota limits, or auth errors), invoke the fallback immediately
+            is_rate_limit = isinstance(e, litellm.exceptions.RateLimitError)
+
+            # A configured fallback is the fastest way out of *any* primary failure,
+            # including a rate limit. This branch used to sit below a RateLimitError
+            # handler that slept 10s, 20s, then 30s before giving up, so a quota-exhausted
+            # primary cost a minute of dead time per call and never reached the fallback
+            # that would have answered immediately.
             if fallbacks:
-                logger.warning(f"Primary model {primary_model} query failed: {e}. Trying fallback model {fallbacks[0]}...")
+                logger.warning(
+                    f"Primary model {primary_model} failed ({type(e).__name__}). "
+                    f"Falling back to {fallbacks[0]}."
+                )
                 try:
                     response = litellm.completion(
                         model=fallbacks[0],
@@ -63,5 +65,16 @@ def chat(messages: List[Dict[str, str]], model: str | None = None, **kw) -> str:
                     return response.choices[0].message.content
                 except Exception as fallback_err:
                     logger.error(f"Fallback model query also failed: {fallback_err}")
-            raise e
 
+            # Only back off when there was nothing to fall back to, or the fallback
+            # failed as well -- waiting is the only remaining option.
+            if is_rate_limit and attempt < 3:
+                sleep_time = (attempt + 1) * 10.0
+                logger.warning(
+                    f"Rate limited and no working fallback. "
+                    f"Retrying in {sleep_time:.1f}s (attempt {attempt + 1}/4)."
+                )
+                time.sleep(sleep_time)
+                continue
+
+            raise e

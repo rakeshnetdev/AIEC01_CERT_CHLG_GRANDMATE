@@ -59,6 +59,8 @@ def ingest_corpus(corpus_dir: str, persist_dir: str) -> None:
         return
         
     # Reset collection to clear past data
+    # The corpus is about to change, so any cached lexical index is now stale.
+    reset_bm25_cache()
     collection = reset_collection(persist_dir)
     
     ids = []
@@ -86,6 +88,42 @@ def ingest_corpus(corpus_dir: str, persist_dir: str) -> None:
 
 # Global cache for BM25 instance and lookups: (bm25_instance, doc_ids, doc_lookup)
 _BM25_CACHE = None
+
+# The corpus is static between queries, so a bucket's BM25 index is a fixed artefact.
+# It used to be rebuilt on every call -- refetching all documents, retokenising them and
+# constructing BM25Okapi -- which cost about 5s per retrieval. Production always passes a
+# bucket, so that rebuild was on every request. Keyed by bucket; cleared by reset_bm25_cache().
+_BM25_BUCKET_CACHE: dict = {}
+
+
+def reset_bm25_cache() -> None:
+    """Drops the cached lexical indexes. Call after ingesting or changing the corpus."""
+    global _BM25_CACHE
+    _BM25_CACHE = None
+    _BM25_BUCKET_CACHE.clear()
+
+
+def _get_bucket_bm25(bucket: str, doc_ids: List[str], doc_lookup: dict, tokenize):
+    """Returns (bm25, ids) for one bucket, building it once and reusing it thereafter."""
+    cached = _BM25_BUCKET_CACHE.get(bucket)
+    if cached is not None:
+        return cached
+
+    filtered_ids, filtered_texts = [], []
+    for doc_id in doc_ids:
+        if doc_lookup[doc_id]["metadata"].get("bucket") == bucket:
+            filtered_ids.append(doc_id)
+            filtered_texts.append(doc_lookup[doc_id]["text"])
+
+    if not filtered_ids:
+        _BM25_BUCKET_CACHE[bucket] = (None, [])
+        return _BM25_BUCKET_CACHE[bucket]
+
+    from rank_bm25 import BM25Okapi
+    logger.info(f"Building BM25 index for bucket '{bucket}' ({len(filtered_ids)} documents) - cached for reuse.")
+    _BM25_BUCKET_CACHE[bucket] = (BM25Okapi([tokenize(t) for t in filtered_texts]), filtered_ids)
+    return _BM25_BUCKET_CACHE[bucket]
+
 
 def get_bm25_index(collection) -> tuple | None:
     """Helper to lazily construct and cache the BM25 lexical index from ChromaDB."""
@@ -160,21 +198,11 @@ def _retrieve_sparse_only(query: str, bm25, limit: int, doc_ids: List[str], doc_
     tokenized_query = tokenize(query)
     
     if bucket:
-        # Filter doc_ids for this bucket and build a temporary BM25 index
-        filtered_ids = []
-        filtered_texts = []
-        for doc_id in doc_ids:
-            if doc_lookup[doc_id]["metadata"].get("bucket") == bucket:
-                filtered_ids.append(doc_id)
-                filtered_texts.append(doc_lookup[doc_id]["text"])
-                
+        bucket_bm25, filtered_ids = _get_bucket_bm25(bucket, doc_ids, doc_lookup, tokenize)
         if not filtered_ids:
             return []
-            
-        from rank_bm25 import BM25Okapi
-        tokenized_corpus = [tokenize(doc) for doc in filtered_texts]
-        temp_bm25 = BM25Okapi(tokenized_corpus)
-        bm25_scores = temp_bm25.get_scores(tokenized_query)
+
+        bm25_scores = bucket_bm25.get_scores(tokenized_query)
         
         bm25_k = min(10, len(filtered_ids))
         sorted_indices = sorted(range(len(bm25_scores)), key=lambda idx: bm25_scores[idx], reverse=True)
