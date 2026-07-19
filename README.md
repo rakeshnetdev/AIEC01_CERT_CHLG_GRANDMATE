@@ -162,11 +162,11 @@ Last measured from `evals/report.py` against a rebuilt, independent-oracle harne
 
 | Metric | Target | Measured | Status |
 | :--- | :--- | :--- | :--- |
-| Detection F1 (Blunders) | `≥ 0.90` | **0.9586** | ✅ Real — scored against an independent depth-24 Stockfish oracle (n=151) |
-| Severity Accuracy | `≥ 0.85` | **0.8940** | ✅ Real (n=151) |
-| Illegal / Hallucinated Move Rate | `0%` | **0.0000%** | ✅ Real (n=2 moves checked) |
-| RAGAS Faithfulness | `≥ 0.85` | **0.75** | ⚠️ Below target (n=2 — thin sample, see caveat) |
-| LLM-Judge Coaching Quality | `≥ 4.0 / 5` | **4.00 / 5** | ✅ Real (n=3) |
+| Detection F1 (Blunders) | `≥ 0.90` | **0.9294** | ✅ Real — scored against an independent depth-24 Stockfish oracle (n=151) |
+| Severity Accuracy | `≥ 0.85` | **0.9073** | ✅ Real (n=151) |
+| Illegal / Hallucinated Move Rate | `0%` | **0.0000%** | ✅ Real (n=11 moves checked) |
+| RAGAS Faithfulness | `≥ 0.85` | **0.8667** | ✅ Passes, but narrowly (n=12) |
+| LLM-Judge Coaching Quality | `≥ 4.0 / 5` | **3.17 / 5** | ❌ Below target (n=12 — a confirmed miss, not sampling noise) |
 
 > **These numbers replace an earlier scorecard that looked identical (F1/severity `1.0`, faithfulness `1.0`) but measured nothing** — the dataset's ground truth was produced by the same function the harness then graded, and faithfulness defaulted to a passing score whenever no context was retrieved. The eval suite was rebuilt around an independent oracle; see the falsification test below for proof it can now actually fail.
 
@@ -176,7 +176,8 @@ Last measured from `evals/report.py` against a rebuilt, independent-oracle harne
 
 * **Known caveat — engine non-determinism.** Three runs of the same dataset at the same depth have now produced different labels each time (F1 `0.9467` / `0.9529` / `0.9586`; severity `0.9073` / `0.8940` / `0.8940`). This is a real violation of the "same game + depth ⇒ same labels" rule, most likely Stockfish threading, and was invisible under the old circular metric because a function compared to itself is always perfectly reproducible. Read detection figures with a **±0.02 band** (widened from an earlier ±0.01) until this is pinned (candidate fix: `Threads=1`).
 
-* **RAGAS Faithfulness `0.75` is a genuine measurement, now below its own `≥0.85` target — the earlier `1.0` and `0.30` were both harness artifacts.** The eval `Game` is rebuilt from `fen_before` via `[SetUp]`/`[FEN]` PGN headers (so black-to-move positions parse and mid-game context is retrieved for the right board), and the judge is given the coach's **engine facts alongside the RAG context** — the old prompt penalised the coach for correctly narrating Stockfish-derived facts that by definition aren't in the corpus. At n=2 this could be sampling noise rather than a confirmed regression; every run prints an explicit not-measured accounting (`judge_failures`, `pipeline_failures`, `rows_without_rag_context`) instead of silently defaulting to a pass.
+* **The judged sample was raised from 3 to 12, which changed what the numbers mean.** At n=3, repeated runs of unchanged code gave faithfulness between `0.75` and `1.00` and coaching quality between `3.33` and `4.00` — each crossing its target in both directions, so neither could be reported as a result. At n=12 faithfulness settles at `0.8667` (a narrow pass; the earlier `1.00` was small-sample luck) and coaching quality at `3.17` (a confirmed miss). Open items are tracked in [docs/issues-and-improvements.md](./docs/issues-and-improvements.md).
+* **RAGAS Faithfulness is a genuine measurement — the earlier `1.0` and `0.30` readings were both harness artifacts.** The eval `Game` is rebuilt from `fen_before` via `[SetUp]`/`[FEN]` PGN headers (so black-to-move positions parse and mid-game context is retrieved for the right board), and the judge is given the coach's **engine facts alongside the RAG context** — the old prompt penalised the coach for correctly narrating Stockfish-derived facts that by definition aren't in the corpus. At n=2 this could be sampling noise rather than a confirmed regression; every run prints an explicit not-measured accounting (`judge_failures`, `pipeline_failures`, `rows_without_rag_context`) instead of silently defaulting to a pass.
 
 * **Illegal / Hallucinated Move Rate and Coaching Quality are now measured without silent defaults.** A failed judge call reports `null` ("not measured"), never a fabricated `4`.
 

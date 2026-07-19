@@ -85,26 +85,35 @@ next. Already scoped as future work.
 
 | Metric | Result | Target |
 |---|---|---|
-| Coaching quality | 3.33 / 5 | ≥ 4.0 |
+| Coaching quality | 3.17 / 5 (n = 12) | ≥ 4.0 |
 
-This is the one headline metric currently failing. It measured the same before the latest round of
-work, so it is a standing gap rather than a regression — but it has not yet been investigated, and
-the sample is small enough that the score itself is uncertain (see 2.2).
+This is the one headline metric failing, and it is now **confirmed rather than suspected**. It was
+previously measured on three examples, where scores ranged from 3.33 to 4.00 and straddled the
+target. Re-measured on twelve, it settles at 3.17 — below target with no ambiguity.
 
-**Next step:** re-measure at a larger sample first. Only then decide whether the gap is real and
-what in the coaching prompt is responsible.
+It scored no better before the latest round of work, so this is a standing gap, not a regression.
+
+**Next step:** investigate the coaching prompt. The measurement is now trustworthy enough to act
+on, which it was not before.
 
 ### 2.2 The judged sample is too small to draw conclusions from 🔴
 
-The judged part of the evaluation defaults to three examples. Faithfulness has measured anywhere
-between **0.75 and 1.00 across separate runs of essentially unchanged code**.
+The judged part of the evaluation defaults to three examples. At that size, faithfulness measured
+anywhere between **0.75 and 1.00 across separate runs of essentially unchanged code** — a spread
+wider than most differences we would want to detect.
 
-That spread is wider than most differences we would want to detect, so at this sample size the
-judged scores cannot support a before/after claim. They are usable as a rough check that nothing is
-badly wrong, and not much more.
+Re-running at twelve examples resolved both judged metrics, and changed the conclusions:
 
-**Fix:** raise the sample size for any run whose numbers will be quoted, and report a range rather
-than a single figure.
+| Metric | At n = 3 | At n = 12 | What changed |
+|---|---|---|---|
+| Faithfulness | 0.75 – 1.00 | 0.8667 | The 1.00 was luck; the true value is a narrow pass |
+| Coaching quality | 3.33 – 4.00 | 3.17 | Was ambiguous, now a confirmed miss |
+
+**Status:** partly addressed. Twelve is enough to separate these two metrics from noise, but the
+default is still three.
+
+**Fix:** raise the default, or require an explicit sample size for any run whose numbers will be
+quoted.
 
 ### 2.3 The engine does not produce identical results run to run 🔴
 
@@ -136,10 +145,10 @@ only as user-visible symptoms.
 | # | Change | Why it is ranked here |
 |---|---|---|
 | 1 | Reset the grounding retry counter each turn | Small fix; removes a silent weakening of a safety check |
-| 2 | Raise the judged evaluation sample size | Every other quality conclusion depends on trustworthy numbers |
+| 2 | Raise the *default* judged sample size | Done ad hoc at n = 12; the default is still 3, so the next run silently reverts to untrustworthy numbers |
 | 3 | Pin the engine to one thread and re-measure | Restores reproducibility, which the detection metrics assume |
 | 4 | Skip re-analysis on chat turns | Largest remaining latency win, low risk |
-| 5 | Investigate the coaching-quality gap | Only sensible once 2 and 3 make the measurement trustworthy |
+| 5 | Investigate the coaching-quality gap | Now actionable — confirmed at n = 12, no longer within noise |
 | 6 | Decide the fate of the retriever setting | Product decision; currently misleading in the UI |
 | 7 | Add a durable learner profile | Largest new capability, but depends on nothing above |
 
