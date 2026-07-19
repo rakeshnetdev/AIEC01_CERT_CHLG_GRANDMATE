@@ -3,9 +3,7 @@
 Deep architecture reference for the Certification Challenge build. Pairs with `CAPSTONE_BRIEF.md`
 (the graded write-up) and `PLAN.md` (the phased build). Diagrams are GitHub-native Mermaid.
 
-This document describes the system as it is today. Known gaps and planned work are tracked
-separately in [issues-and-improvements.md](./issues-and-improvements.md), so that this file stays a
-description of the current design rather than a mix of design and caveats.
+This document describes the system as it is today.
 
 ---
 
@@ -295,7 +293,7 @@ One tier shipped, one tier still open:
   reply instead of a 500. **Limitation:** it's a dict in memory, not a database — a server restart
   wipes every thread's state, and a new `thread_id` (a new session, a different day) has no link to
   a user's previous ones.
-- **Learner profile (durable, not yet built — see [issues-and-improvements.md](./issues-and-improvements.md) §1.5).** The intended design — a SQLite table keyed by
+- **Learner profile (durable, not yet built).** The intended design — a SQLite table keyed by
   `username`, updated with rolling weakness-theme counts after each review and read back in on a
   return visit ("last time back-rank tactics were your weak spot — let's see if it improved") — is
   what would close the learning loop this product is built around. No `learner_profile` table or

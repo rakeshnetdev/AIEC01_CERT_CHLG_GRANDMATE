@@ -260,8 +260,9 @@ so this matters more than the passing score itself.
 Accuracy is not uniform. Near-miss inaccuracies are hardest to agree on (70%), followed by
 promotions (71%), while en passant, forced mate, and move disambiguation reach 100%.
 
-Known limitations affecting these numbers are tracked in
-[issues-and-improvements.md](./issues-and-improvements.md).
+**Two limitations apply.** These figures measure the fallback model rather than the configured
+primary, which is currently unavailable; and the engine does not repeat exactly, so detection
+figures carry a tolerance of about ±0.02.
 
 ---
 
