@@ -157,30 +157,26 @@ uv run pytest tests/                        # Run unit, integration, and guardra
 
 ### Evaluation Targets vs. Measured
 
-Last measured from `evals/report.py` against a rebuilt, independent-oracle harness (results on disk in `evals/report.json`; overview in [docs/synthetic_data_and_eval_design.md](./docs/synthetic_data_and_eval_design.md)).
+Measured by `evals/report.py`; raw output in `evals/report.json`, dataset design in
+[docs/synthetic_data_and_eval_design.md](./docs/synthetic_data_and_eval_design.md).
 
 | Metric | Target | Measured | Status |
 | :--- | :--- | :--- | :--- |
-| Detection F1 (Blunders) | `≥ 0.90` | **0.9294** | ✅ Real — scored against an independent depth-24 Stockfish oracle (n=151) |
-| Severity Accuracy | `≥ 0.85` | **0.9073** | ✅ Real (n=151) |
-| Illegal / Hallucinated Move Rate | `0%` | **0.0000%** | ✅ Real (n=11 moves checked) |
+| Detection F1 (Blunders) | `≥ 0.90` | **0.9294** | ✅ Scored against an independent depth-24 Stockfish oracle (n=151) |
+| Severity Accuracy | `≥ 0.85` | **0.9073** | ✅ (n=151) |
+| Illegal / Hallucinated Move Rate | `0%` | **0.0000%** | ✅ (n=11 moves checked) |
 | RAGAS Faithfulness | `≥ 0.85` | **0.8667** | ✅ Passes, but narrowly (n=12) |
-| LLM-Judge Coaching Quality | `≥ 4.0 / 5` | **3.17 / 5** | ⚠️ Measurement artefact — the harness judges *single-move* games; a real game scores 4/5 with the same judge |
+| LLM-Judge Coaching Quality | `≥ 4.0 / 5` | **3.17 / 5** | ⚠️ Measures *single-move* test games; a real game scores 4/5 with the same judge |
 
-> **These numbers replace an earlier scorecard that looked identical (F1/severity `1.0`, faithfulness `1.0`) but measured nothing** — the dataset's ground truth was produced by the same function the harness then graded, and faithfulness defaulted to a passing score whenever no context was retrieved. The eval suite was rebuilt around an independent oracle; see the falsification test below for proof it can now actually fail.
+* **Ground truth is independent of the code being graded.** Detection is scored against Stockfish at depth 24; the production classifier runs at depth 16 with its own thresholds.
+* **The test can fail, and we check that it can.** Corrupting the severity thresholds so nothing can be classified as a mistake drops F1 from `0.95` to **`0.19`**. A test that cannot fail proves nothing, which makes this more informative than the passing score.
+* **Nothing defaults to a pass.** A failed judge call reports "not measured" rather than a fabricated score, and every run prints how many rows went unmeasured.
+* **The coaching score is a measurement artefact, not a product result.** Each judged case is built as a single-move game, so the coach cannot produce most of what it is scored on. Given the same judge and prompt, a real 23-move game scores `4/5`.
+* **The engine does not repeat exactly.** Identical inputs at identical depth have produced F1 between `0.9286` and `0.9586`, so read detection figures with a ±0.02 band.
+* **These figures measure GPT-4o.** The configured primary model is unavailable and every call falls back.
 
-* **Detection F1 and Severity Accuracy are now measured against an independent oracle, not the classifier under test.** `evals/generate_synthetic.py` no longer imports `calculate_cpl_and_label`; ground truth comes from Stockfish at **depth 24** plus a reference CPL/severity rule implemented from the spec. `evals/report.py` re-analyses all **151** positions with the *production* engine at depth 16 and production classifier, and scores the result against the oracle's labels. The dataset covers all four severity classes, both colours (56 black-to-move rows — the old harness silently dropped every one), and six edge cases (promotion, castling, en passant, forced mate, stalemate trap, SAN disambiguation).
 
-* **Proof the metric can now fail:** deliberately corrupting the severity thresholds (`INACCURACY_CP=10000 MISTAKE_CP=20000 BLUNDER_CP=30000`, so nothing can be classified a mistake) collapses Detection F1 from `0.9529` to **`0.1875`** and Severity Accuracy from `0.8940` to **`0.4238`**. The old harness reported `1.0` under any mutation, because it compared a deterministic function to itself.
-
-* **Known caveat — engine non-determinism.** Three runs of the same dataset at the same depth have now produced different labels each time (F1 `0.9467` / `0.9529` / `0.9586`; severity `0.9073` / `0.8940` / `0.8940`). This is a real violation of the "same game + depth ⇒ same labels" rule, most likely Stockfish threading, and was invisible under the old circular metric because a function compared to itself is always perfectly reproducible. Read detection figures with a **±0.02 band** (widened from an earlier ±0.01) until this is pinned (candidate fix: `Threads=1`).
-
-* **The judged sample was raised from 3 to 12, which changed what the numbers mean.** At n=3, repeated runs of unchanged code gave faithfulness between `0.75` and `1.00` and coaching quality between `3.33` and `4.00` — each crossing its target in both directions, so neither could be reported as a result. At n=12 faithfulness settles at `0.8667` (a narrow pass; the earlier `1.00` was small-sample luck) and coaching quality at `3.17` — but that figure turned out to measure the harness, not the coach: it judges single-move fragments, and the same judge scores a real 23-move game `4/5`.
-* **RAGAS Faithfulness is a genuine measurement — the earlier `1.0` and `0.30` readings were both harness artifacts.** The eval `Game` is rebuilt from `fen_before` via `[SetUp]`/`[FEN]` PGN headers (so black-to-move positions parse and mid-game context is retrieved for the right board), and the judge is given the coach's **engine facts alongside the RAG context** — the old prompt penalised the coach for correctly narrating Stockfish-derived facts that by definition aren't in the corpus. At n=2 this could be sampling noise rather than a confirmed regression; every run prints an explicit not-measured accounting (`judge_failures`, `pipeline_failures`, `rows_without_rag_context`) instead of silently defaulting to a pass.
-
-* **Illegal / Hallucinated Move Rate and Coaching Quality are now measured without silent defaults.** A failed judge call reports `null` ("not measured"), never a fabricated `4`.
-
-**Retriever comparison** (`evals/compare_retrievers.py`; full report in [docs/retriever_evaluation_report.md](./docs/retriever_evaluation_report.md)) — rewritten to score all three strategies through the production `retrieve_context(..., bucket=)` against **135 queries derived from the corpus itself**, including LLM-paraphrased queries that reword rather than quote the source text:
+**Retriever comparison** (`evals/compare_retrievers.py`; full report in [docs/retriever_evaluation_report.md](./docs/retriever_evaluation_report.md)) — scores all three strategies through the production `retrieve_context(..., bucket=)` against **135 queries derived from the corpus itself**, including LLM-paraphrased queries that reword rather than quote the source text:
 
 | Retriever | Hit Rate @3 | MRR | Avg Latency |
 | :--- | :--- | :--- | :--- |
@@ -188,9 +184,9 @@ Last measured from `evals/report.py` against a rebuilt, independent-oracle harne
 | BM25 Lexical | 80.3% | 0.755 | 178ms |
 | **Hybrid RRF** | 85.6% | **0.817** (best) | 344ms |
 
-**Hybrid RRF has the best ranking quality, confirming Golden Rule 9** — a reversal from an earlier reading that had it losing to plain BM25. That earlier result came from a query set of exact lexical names and verbatim corpus extracts, which BM25 matches by pure word overlap; only genuinely reworded queries settle the comparison honestly. Bucket filtering independently improves every retriever (Hybrid MRR rises from `0.710` unbucketed to `0.817` bucketed).
+**Hybrid RRF has the best ranking quality, confirming Golden Rule 9** — it wins on MRR while staying close to dense on hit rate, at roughly half the dense latency penalty.
 
 **Known gaps / follow-ups:**
 * **No relevance floor.** All three retrievers return `k` results even for out-of-corpus queries (tested against Go, football, backgammon) — 3/3 false positives each. Retrieval never abstains.
-* Router intent/fast-path, guardrail refusals, and memory persistence have no eval coverage yet.
-* Raise the judged-layer sample size above the current `--sample 3` default; cheap to do, costs money to run — would also confirm whether the sub-target faithfulness score (`0.75`) holds up or was n=2 noise.
+* Router dispatch, guardrail refusals, and memory have no eval coverage yet.
+* The judged layer still defaults to `--sample 3`, so a run without an explicit sample size silently returns numbers too unstable to quote.
