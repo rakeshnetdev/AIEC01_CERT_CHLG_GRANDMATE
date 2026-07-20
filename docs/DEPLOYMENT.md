@@ -80,6 +80,47 @@ calls and delaying readiness. The blueprint therefore requests the `starter` pla
 
 ---
 
+## 2b. Backend on Fly.io (alternative to Render)
+
+`backend/fly.toml` is the equivalent configuration. It sits in `backend/` because Fly uses the
+directory containing `fly.toml` as the Docker build context, and the Dockerfile copies
+`pyproject.toml`, `uv.lock` and `src/` from the backend root.
+
+```bash
+cd backend
+fly launch --no-deploy                          # first time only, creates the app
+fly volumes create chroma_data --size 1 --region ord
+fly secrets set OPENAI_API_KEY=...              # never stored in fly.toml
+fly deploy
+```
+
+Differences from Render worth knowing:
+
+| | Render | Fly.io |
+|---|---|---|
+| Scale to zero | no (starter plan) | yes — `auto_stop_machines`, which is what keeps it near-free |
+| Persistent disk | `disk:` block | `[[mounts]]` + `fly volumes create` |
+| Secrets | dashboard | `fly secrets set` |
+
+The volume matters more than it looks. Measured on a real container:
+
+| Boot | Volume state | Result | Time to healthy |
+|---|---|---|---|
+| first | empty | ingested 339 chunks | ~90s |
+| second | populated | ingestion skipped | **12s** |
+
+Without a volume every cold start re-ingests the corpus — 339 chunks of embedding calls, and a
+slow boot each time. That is the real cost of a free tier with no persistent storage, not compute.
+
+### Other options
+
+Any platform that runs a real container will work; Stockfish is a binary, so serverless function
+runtimes are out. Cloud Run and Koyeb run the image but offer no persistent disk on their free
+tiers, so both re-ingest on every cold start. Free-tier terms change often — verify current limits
+rather than trusting this table.
+
+---
+
 ## 3. Frontend on Vercel
 
 1. Vercel → **New Project** → import the repository.
