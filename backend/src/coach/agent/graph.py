@@ -456,6 +456,29 @@ def router_agent_node(state: CoachState) -> dict:
     }
 
 
+def _describe_retrieval(query: str, docs: List[dict], bucket: str, retriever: str, embed_model: str) -> str:
+    """Formats what retrieval actually selected, for the execution trace.
+
+    Reads only fields the retrieved documents already carry -- id, metadata, fused score and the
+    text length. It performs no retrieval, no scoring and no embedding of its own, so it adds
+    nothing to request latency beyond formatting a few short strings.
+    """
+    if not docs:
+        return (f"retrieval[{bucket}]: query={query[:60]!r} | retriever={retriever} | "
+                f"embed={embed_model} | 0 chunks selected")
+    parts = []
+    for d in docs:
+        meta = d.get("metadata") or {}
+        score = d.get("rrf_score")
+        parts.append(
+            f"{d.get('id','?')} ({meta.get('title') or meta.get('source') or 'untitled'}, "
+            f"type={meta.get('type','chunk')}, chars={len(d.get('text',''))}"
+            + (f", score={score:.4f}" if isinstance(score, (int, float)) else "") + ")"
+        )
+    return (f"retrieval[{bucket}]: query={query[:60]!r} | retriever={retriever} | "
+            f"embed={embed_model} | {len(docs)} chunks selected -> " + "; ".join(parts))
+
+
 def strategy_node(state: CoachState) -> dict:
     """Queries RAG strategies database and calls strategy specialist agent."""
     logger.info("Running strategy node")
@@ -506,7 +529,12 @@ def strategy_node(state: CoachState) -> dict:
     return {
         "strategy_findings": findings,
         "rag_context": new_rag,
-        "execution_logs": [f"strategy_node: Retrieved {len(docs)} strategy documents from ChromaDB. Formulated strategy findings using the specialized agent prompt."],
+        "execution_logs": [
+            f"strategy_node: Retrieved {len(docs)} strategy documents from ChromaDB. Formulated strategy findings using the specialized agent prompt.",
+            _describe_retrieval(query, docs, "strategies",
+                                state.get("retriever_type") or settings.retriever_type,
+                                settings.embed_model),
+        ],
         "agent_steps": [{
             "agent_name": "Strategy Specialist Agent",
             "prompt": prompt_str,
@@ -560,7 +588,12 @@ def rules_node(state: CoachState) -> dict:
     return {
         "rules_findings": findings,
         "rag_context": new_rag,
-        "execution_logs": [f"rules_node: Retrieved {len(docs)} rules documents from FIDE rulebook. Formulated rules findings using the rules specialist agent."],
+        "execution_logs": [
+            f"rules_node: Retrieved {len(docs)} rules documents from FIDE rulebook. Formulated rules findings using the rules specialist agent.",
+            _describe_retrieval(query, docs, "rules",
+                                state.get("retriever_type") or settings.retriever_type,
+                                settings.embed_model),
+        ],
         "agent_steps": [{
             "agent_name": "Rules Specialist Agent",
             "prompt": prompt_str,
