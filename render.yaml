@@ -1,0 +1,51 @@
+# Render Blueprint — deploy with: Render dashboard → New → Blueprint → point at this repo.
+#
+# Secrets are NEVER committed here. Every entry marked `sync: false` is created empty and must
+# be filled in the Render dashboard (Service → Environment). Render stores those encrypted and
+# injects them as environment variables at runtime, which is exactly how the container expects
+# to receive them — see backend/Dockerfile and backend/entrypoint.sh.
+
+services:
+  - type: web
+    name: grandmate-backend
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: starter          # free tier has no persistent disk and sleeps; see the disk note below
+    region: oregon
+    healthCheckPath: /health
+
+    # The vector store is built on first boot by entrypoint.sh. With a disk attached it
+    # survives restarts and is built once. Without one, every cold start re-ingests the
+    # corpus, which costs embedding calls and delays readiness.
+    disk:
+      name: chroma-data
+      mountPath: /app/data/chroma
+      sizeGB: 1
+
+    envVars:
+      # ---- secrets: set these in the dashboard, never in this file ----
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: LANGSMITH_API_KEY
+        sync: false
+
+      # ---- non-secret configuration ----
+      - key: LLM_MODEL
+        value: gpt-4o-mini
+      - key: LLM_FALLBACK_MODEL
+        value: gpt-4o-mini
+      - key: EMBED_MODEL
+        value: text-embedding-3-small
+      - key: CHROMA_DB_PATH
+        value: /app/data/chroma
+      - key: RETRIEVER_TYPE
+        value: hybrid
+      - key: USE_LLM_JUDGE
+        value: "false"
+      # Render injects PORT; the Dockerfile and healthcheck both read it rather than
+      # assuming 8000.
+      - key: HOST
+        value: 0.0.0.0

@@ -1,0 +1,24 @@
+# Secrets — must never enter an image layer. `COPY . .` would otherwise bake the
+# live .env (API keys) into the published image, where `docker history` exposes it.
+.env
+.env.*
+!.env.example
+
+# Local virtualenv (hundreds of MB, and built for the host platform, not the image)
+.venv/
+**/__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+
+# Local state that must not be shipped: the vector store is rebuilt at startup from
+# data/corpus, and the sqlite caches are host-local.
+data/chroma/
+*.db
+*.sqlite3
+
+# Repo and editor noise
+.git/
+.gitignore
+.claude/
+tests/
