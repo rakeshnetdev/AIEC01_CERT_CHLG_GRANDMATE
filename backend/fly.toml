@@ -1,62 +1,41 @@
-# Fly.io deployment — the alternative to Render, kept in sync with ../render.yaml.
+# fly.toml app configuration file generated for aiec01-cert-chlg-grandmate on 2026-07-20T06:56:19Z
 #
-# This file lives in backend/ on purpose: fly uses the directory containing fly.toml as the
-# Docker build context, and the Dockerfile copies pyproject.toml, uv.lock and src/ from the
-# backend root. Deploy from this directory:
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
-#     cd backend
-#     fly launch --no-deploy        # first time only, creates the app
-#     fly volumes create chroma_data --size 1 --region ord
-#     fly secrets set OPENAI_API_KEY=...    # never stored in this file
-#     fly deploy
-#
-# Secrets are set with `fly secrets set` and injected as environment variables at runtime,
-# the same way the container already expects to receive them (see entrypoint.sh).
 
-app = "grandmate-backend"
-primary_region = "ord"
+app = 'aiec01-cert-chlg-grandmate'
+primary_region = 'ord'
 
 [build]
-  dockerfile = "Dockerfile"
+  dockerfile = 'Dockerfile'
 
 [env]
-  # Non-secret configuration only. Anything sensitive goes through `fly secrets set`.
-  HOST = "0.0.0.0"
-  PORT = "8000"
-  LLM_MODEL = "gpt-4o-mini"
-  LLM_FALLBACK_MODEL = "gpt-4o-mini"
-  EMBED_MODEL = "text-embedding-3-small"
-  RETRIEVER_TYPE = "hybrid"
-  USE_LLM_JUDGE = "false"
-  # Must match the mount destination below, and is an absolute path because the process
-  # runs with WORKDIR /app.
-  CHROMA_DB_PATH = "/app/data/chroma"
+  CHROMA_DB_PATH = '/app/data/chroma'
+  EMBED_MODEL = 'text-embedding-3-small'
+  HOST = '0.0.0.0'
+  LLM_FALLBACK_MODEL = 'gpt-4o-mini'
+  LLM_MODEL = 'gpt-4o-mini'
+  PORT = '8000'
+  RETRIEVER_TYPE = 'hybrid'
+  USE_LLM_JUDGE = 'false'
 
-# The vector store is built on first boot by entrypoint.sh. With this volume it is built once
-# and survives restarts; without it, every cold start re-ingests the corpus, costing embedding
-# calls and delaying readiness.
 [[mounts]]
-  source = "chroma_data"
-  destination = "/app/data/chroma"
+  source = 'chroma_data'
+  destination = '/app/data/chroma'
 
 [http_service]
-  internal_port = 8000
+  internal_port = 8080
   force_https = true
-  # Scale to zero when idle, which is what keeps this close to free. The trade-off is a cold
-  # start on the next request; the machine boots and, with the volume attached, skips ingestion.
-  auto_stop_machines = "stop"
+  auto_stop_machines = 'stop'
   auto_start_machines = true
   min_machines_running = 0
 
   [[http_service.checks]]
-    path = "/health"
-    interval = "30s"
-    timeout = "5s"
-    # First boot runs corpus ingestion before the server accepts traffic, so the grace period
-    # has to cover it. This mirrors the Dockerfile healthcheck's 90s start-period.
-    grace_period = "90s"
+    interval = '30s'
+    timeout = '5s'
+    grace_period = '1m30s'
+    path = '/health'
 
 [[vm]]
-  # chromadb and onnxruntime are memory-hungry; 512MB is not enough to ingest reliably.
-  size = "shared-cpu-1x"
-  memory = "1gb"
+  size = 'shared-cpu-1x'
+  memory = '1gb'
