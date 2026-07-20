@@ -94,6 +94,12 @@ fly secrets set OPENAI_API_KEY=...              # never stored in fly.toml
 fly deploy
 ```
 
+> **`fly launch` rewrites `fly.toml`.** It regenerates the file from its own defaults, which
+> resets `internal_port` to 8080 and strips comments. The app binds to `PORT` (8000), so traffic
+> and health checks then point at a port nothing listens on and the deploy fails while the
+> container itself is perfectly healthy. After running `fly launch`, check that
+> `http_service.internal_port` still matches `env.PORT`.
+
 Differences from Render worth knowing:
 
 | | Render | Fly.io |

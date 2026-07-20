@@ -24,7 +24,11 @@ primary_region = 'ord'
   destination = '/app/data/chroma'
 
 [http_service]
-  internal_port = 8080
+  # Must match the PORT the app binds to (see [env] above and the Dockerfile).
+  # `fly launch` regenerates this file and resets it to Fly's default of 8080, which
+  # leaves traffic and health checks pointed at a port nothing listens on -- the
+  # deployment then fails with the service appearing to start correctly.
+  internal_port = 8000
   force_https = true
   auto_stop_machines = 'stop'
   auto_start_machines = true
