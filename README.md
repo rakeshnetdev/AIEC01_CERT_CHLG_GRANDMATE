@@ -12,6 +12,7 @@
 | :--- | :--- | :--- |
 | 📋 **Full Deliverables** | Core challenge deliverables and self-assessment checklists | [docs/Deliverables.md](./docs/Deliverables.md) |
 | 🏗️ **System Architecture** | Subsystem flowcharts, request-lifecycle sequences, and deployment topologies | [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) |
+| 🎬 **Demo Script** | 10-minute walkthrough in two 5-minute parts, with timings and talking points | [docs/DEMO_SCRIPT.md](./docs/DEMO_SCRIPT.md) |
 | 🚀 **Deployment** | Backend on Render (Docker), frontend on Vercel — setup, verified checks, and troubleshooting | [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md) |
 | 🗺️ **Implementation Plan** | Chronological development phases and engineering logs | [docs/PLAN.md](./docs/PLAN.md) |
 | 🖼️ **Diagrams** | Every mermaid diagram referenced above, as standalone files | [docs/diagrams/](./docs/diagrams/) |
