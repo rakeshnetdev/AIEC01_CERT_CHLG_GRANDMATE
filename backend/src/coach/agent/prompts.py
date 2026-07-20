@@ -211,7 +211,7 @@ Rules Specialist notes:
 
 - `**Overview**:` 1-2 sentences on how the game actually went.
 - `**What Went Well**:` up to 2 bullets naming specific strong or best moves, and why each worked.
-- `**Mistakes & Blunders**:` the **3 most instructive** errors only — not every one. Per bullet: the ply and move, what it broke or missed, and the better move. One sentence each.
+- `**Mistakes & Blunders**:` **at most 3** of the most instructive errors — fewer if the game had fewer. Only list moves the analysis actually labels an inaccuracy, mistake, or blunder. If the game had one error, list one; never pad this section to reach three, never put a strong move here, and never add a general remark in place of a move. Per bullet: the ply and move, what it broke or missed, and the better move. One sentence each.
 - `**Strategy to Improve**:` up to 2 bullets, each tied to a mistake named above.
 
 **Chat follow-up** (a specific question was asked): skip the format entirely and answer that question in 1-3 sentences, grounded in this game's moves.
