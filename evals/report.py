@@ -27,6 +27,7 @@ Usage:
 
 import argparse
 import json
+import os
 import re
 import sys
 import time
@@ -34,6 +35,66 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 import chess
+
+# --- real Ragas faithfulness -------------------------------------------------------------
+# This metric used to be a hand-written judge prompt returning one 0-1 score, while still being
+# reported as "RAGAS Faithfulness". It is now computed by the Ragas library, which decomposes the
+# response into individual claims and verifies each against the retrieved context.
+#
+# ragas 0.4.3 imports langchain_community.chat_models.vertexai, removed in langchain-community
+# 0.4.2. The symbol is only used in an isinstance list for multi-completion support, so this stub
+# is inert -- it never matches, which is correct because we do not use Vertex.
+import types as _types
+if "langchain_community.chat_models.vertexai" not in sys.modules:
+    _stub = _types.ModuleType("langchain_community.chat_models.vertexai")
+    class _ChatVertexAI:  # never instantiated
+        pass
+    _stub.ChatVertexAI = _ChatVertexAI
+    sys.modules["langchain_community.chat_models.vertexai"] = _stub
+
+_RAGAS_JUDGE = None
+
+
+def _ragas_judge():
+    """Synchronous Ragas judge, bridged at the coroutine boundary (see Session 6)."""
+    global _RAGAS_JUDGE
+    if _RAGAS_JUDGE is None:
+        import asyncio as _asyncio
+        import instructor
+        from openai import OpenAI
+        from ragas.llms import llm_factory
+        from config.settings import get_settings
+
+        judge = llm_factory(
+            os.environ.get("EVAL_JUDGE_MODEL", get_settings().llm_model),
+            provider="openai",
+            client=OpenAI(api_key=get_settings().openai_api_key),
+            mode=instructor.Mode.TOOLS,
+            max_tokens=1024,
+        )
+        judge.model_args = {"max_tokens": 1024, "max_retries": 3}
+
+        async def agenerate_from_sync(prompt, response_model):
+            return await _asyncio.to_thread(judge.generate, prompt=prompt, response_model=response_model)
+
+        judge.agenerate = agenerate_from_sync
+        _RAGAS_JUDGE = judge
+    return _RAGAS_JUDGE
+
+
+def ragas_faithfulness(question: str, response: str, contexts: List[str]) -> Optional[float]:
+    """Ragas Faithfulness: fraction of the response's claims supported by the contexts."""
+    import asyncio as _asyncio
+    from ragas.metrics.collections import Faithfulness
+    try:
+        async def _score():
+            return await Faithfulness(llm=_ragas_judge()).ascore(
+                user_input=question, response=response, retrieved_contexts=contexts)
+        return float(_asyncio.run(_score()).value)
+    except Exception as exc:
+        print(f"      ragas faithfulness failed: {type(exc).__name__}: {str(exc)[:90]}")
+        return None
+
 
 ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(ROOT / "backend"))
@@ -262,27 +323,19 @@ def evaluate_judged(dataset: List[Dict], sample: int) -> Dict:
         ) or "- (no engine analysis available)"
 
         if rag_context.strip():
-            verdict = run_judge(f"""You are judging FAITHFULNESS of a chess coach's narration.
-
-The narration is allowed to state the ENGINE FACTS below (they are verified ground truth).
-It is also allowed to draw on the RETRIEVED THEORY below.
-Score how well the narration is supported by these two sources combined. Penalise only
-claims that contradict them or are invented outright.
-
-ENGINE FACTS (verified):
-{engine_facts}
-
-RETRIEVED THEORY:
-{rag_context}
-
-NARRATION:
-{narration}
-
-Respond in JSON: {{"score": <float 0.0-1.0>}}""")
-            if verdict is None or "score" not in verdict:
+            # Engine facts are verified ground truth the coach is required to narrate, so they
+            # are supplied alongside the retrieved theory. Judging against the corpus alone would
+            # penalise the coach for doing exactly what Golden Rule 1 demands.
+            contexts = [c for c in (engine_facts, rag_context) if c and c.strip()]
+            score = ragas_faithfulness(
+                question="Review this chess game: what went well, what went wrong, and how to improve?",
+                response=narration,
+                contexts=contexts,
+            )
+            if score is None:
                 judge_failures += 1
             else:
-                faithfulness.append(float(verdict["score"]))
+                faithfulness.append(score)
         else:
             # Not a pass. No context retrieved means the metric was not measurable here.
             no_context += 1

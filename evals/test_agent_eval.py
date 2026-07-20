@@ -54,8 +54,10 @@ from coach.agent.graph import compile_coach_graph
 from coach.guardrails import validate_request
 from config.settings import get_settings
 
-JUDGE_MODEL = os.environ.get("EVAL_JUDGE_MODEL", "gpt-4o")
 GOAL_RUNS = int(os.environ.get("EVAL_GOAL_RUNS", "5"))
+
+
+JUDGE_MODEL = os.environ.get("EVAL_JUDGE_MODEL", get_settings().llm_model)
 
 
 def build_judge():
