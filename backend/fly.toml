@@ -1,10 +1,10 @@
-# fly.toml app configuration file generated for aiec01-cert-chlg-grandmate on 2026-07-20T06:56:19Z
+# fly.toml app configuration file generated for aiec01-cert-chlg-grandmate-exxpya on 2026-07-21T00:02:26Z
 #
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
 
-app = 'aiec01-cert-chlg-grandmate'
-primary_region = 'ord'
+app = 'aiec01-cert-chlg-grandmate-exxpya'
+primary_region = 'ams'
 
 [build]
   dockerfile = 'Dockerfile'
@@ -24,7 +24,7 @@ primary_region = 'ord'
   destination = '/app/data/chroma'
 
 [http_service]
-  internal_port = 8080
+  internal_port = 8000
   force_https = true
   auto_stop_machines = 'stop'
   auto_start_machines = true
