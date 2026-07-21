@@ -21,6 +21,15 @@ CHESS_KEYWORDS = {
     "inaccuracy", "inaccuracies", "fork", "pin", "pins", "check", "checkmate", "mate", "threat",
     "threats", "sacrifice", "sac", "exchange", "trade", "trades", "discovered", "double", "hanging",
     
+    # Game Phases & Material — chess-specific terms only. Deliberately excludes generic words
+    # like "lose", "win" or "material" on their own, which would let "how do I lose weight"
+    # through; every term here is unambiguous in ordinary English.
+    "middlegame", "midgame", "endgame", "endgames", "opening", "openings", "endings",
+    "stalemate", "checkmated", "resign", "resigned", "promotion", "promote", "underpromotion",
+    "repetition", "zugzwang", "fianchetto", "outpost", "passed", "isolated", "doubled",
+    "backward", "skewer", "skewers", "deflection", "decoy", "zwischenzug", "windmill",
+    "counterplay", "prophylaxis", "overprotection", "undefended", "material", "pawns",
+
     # Strategy & Positional Concepts
     "strategy", "strategies", "strategic", "plan", "plans", "planning", "structure", "structures",
     "weakness", "weaknesses", "weak", "strong", "strength", "strengths", "advantage", "tempo",

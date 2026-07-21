@@ -120,7 +120,17 @@ def _get_bucket_bm25(bucket: str, doc_ids: List[str], doc_lookup: dict, tokenize
         return _BM25_BUCKET_CACHE[bucket]
 
     from rank_bm25 import BM25Okapi
-    logger.info(f"Building BM25 index for bucket '{bucket}' ({len(filtered_ids)} documents) - cached for reuse.")
+    # One-off per bucket, on the first query only -- the cache means later requests skip this.
+    sources = {}
+    for doc_id in filtered_ids:
+        meta = doc_lookup[doc_id]["metadata"] or {}
+        src = meta.get("source") or meta.get("type") or "unknown"
+        sources[src] = sources.get(src, 0) + 1
+    logger.info(
+        f"corpus[{bucket}]: {len(filtered_ids)} chunks indexed for lexical search, by type: "
+        + ", ".join(f"{k}={v}" for k, v in sorted(sources.items()))
+        + " (built once, cached for reuse)"
+    )
     _BM25_BUCKET_CACHE[bucket] = (BM25Okapi([tokenize(t) for t in filtered_texts]), filtered_ids)
     return _BM25_BUCKET_CACHE[bucket]
 

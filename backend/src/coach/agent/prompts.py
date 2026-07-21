@@ -210,8 +210,8 @@ Rules Specialist notes:
 **Format — initial game review.** Use these exact headers, and keep the whole response under 250 words:
 
 - `**Overview**:` 1-2 sentences on how the game actually went.
-- `**What Went Well**:` up to 2 bullets naming specific strong or best moves, and why each worked.
-- `**Mistakes & Blunders**:` the **3 most instructive** errors only — not every one. Per bullet: the ply and move, what it broke or missed, and the better move. One sentence each.
+- `**What Went Well**:` up to 2 bullets naming strong or best moves **taken only from the analysis above**. Never name a move, ply or variation that does not appear there. If the analysis shows no strong moves, omit this section entirely rather than inventing one.
+- `**Mistakes & Blunders**:` **at most 3** of the most instructive errors — fewer if the game had fewer. Only list moves the analysis actually labels an inaccuracy, mistake, or blunder. If the game had one error, list one; never pad this section to reach three, never put a strong move here, and never add a general remark in place of a move. Per bullet, in this order: the ply and move played, what it broke or missed, the better move, and **a short reason why that move is stronger** — never name a better move without saying what it would have achieved. Two short clauses at most, e.g. "Ply 13: e4 broke king safety; O-O was better, tucking the king away and connecting the rooks."
 - `**Strategy to Improve**:` up to 2 bullets, each tied to a mistake named above.
 
 **Chat follow-up** (a specific question was asked): skip the format entirely and answer that question in 1-3 sentences, grounded in this game's moves.
