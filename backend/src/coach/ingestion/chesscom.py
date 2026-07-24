@@ -10,10 +10,19 @@ from coach.utils.cache import get_cached_http_response, cache_http_response
 
 logger = logging.getLogger(__name__)
 
-def fetch_chesscom_games(username: str, months: int = 1, max_games: int = 10) -> List[Game]:
-    """Fetches games for a Chess.com player going back N months, with backoff for 429s."""
+def fetch_chesscom_games(username: str, months: int = 3, max_games: int = 10) -> List[Game]:
+    """Fetches games for a Chess.com player going back N months, with backoff for 429s.
+
+    Chess.com archives games per calendar month, so a single-month lookback returns
+    nothing for a player who last played before the 1st. Older months are only
+    requested once the newer ones come up short of max_games.
+    """
     games: List[Game] = []
-    
+
+    # Chess.com's API only serves lowercase usernames; anything else 301s to the
+    # lowercase URL, which httpx does not follow by default.
+    username = username.lower()
+
     # Generate list of (year, month) to fetch
     target_months = []
     now = datetime.datetime.now()
@@ -54,7 +63,7 @@ def fetch_chesscom_games(username: str, months: int = 1, max_games: int = 10) ->
             response_text = None
             for attempt in range(3):
                 try:
-                    response = httpx.get(url, headers=headers, timeout=15.0)
+                    response = httpx.get(url, headers=headers, timeout=15.0, follow_redirects=True)
                     if response.status_code == 200:
                         response_text = response.text
                         break

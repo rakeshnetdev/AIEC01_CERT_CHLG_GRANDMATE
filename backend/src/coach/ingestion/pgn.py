@@ -1,9 +1,34 @@
 import io
 import hashlib
-from typing import Iterator, Tuple
+import re
+from typing import Iterator, Optional, Tuple
 import chess
 import chess.pgn
 from coach.schemas.models import Game, Source
+
+# A slug segment that starts a move sequence, e.g. "5.O-O" or "2...dxe4".
+_MOVE_SEGMENT = re.compile(r"^\d+\.")
+
+
+def _opening_from_eco_url(eco_url: str) -> Optional[str]:
+    """Derives an opening name from a Chess.com ECOUrl.
+
+    Chess.com omits the standard "Opening" PGN header and instead links to its
+    opening page, e.g. ".../openings/Giuoco-Piano-Game-Four-Knights-Game-5.O-O".
+    The trailing move sequence is not part of the name, so it is dropped.
+    """
+    slug = eco_url.rstrip("/").rsplit("/", 1)[-1]
+    if not slug:
+        return None
+
+    segments = slug.split("-")
+    for i, segment in enumerate(segments):
+        if _MOVE_SEGMENT.match(segment):
+            segments = segments[:i]
+            break
+
+    return " ".join(segments) or None
+
 
 def parse_pgn(pgn: str, source: Source, username: str) -> Game:
     """Parses a PGN string into a normalized Game model."""
@@ -34,6 +59,8 @@ def parse_pgn(pgn: str, source: Source, username: str) -> Game:
             
     time_control = headers.get("TimeControl", None)
     opening_name = headers.get("Opening", None)
+    if not opening_name and "ECOUrl" in headers:
+        opening_name = _opening_from_eco_url(headers["ECOUrl"])
     
     # Infer user color
     user_color = "white"
