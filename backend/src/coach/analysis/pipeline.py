@@ -1,5 +1,6 @@
 import chess
 import logging
+import time
 from typing import List, Optional
 from config.settings import Settings
 from coach.schemas.models import Game, MoveAnalysis
@@ -65,15 +66,19 @@ def analyze_game(game: Game, settings: Settings) -> List[MoveAnalysis]:
     
     analyses: List[MoveAnalysis] = []
     user_color_is_white = (game.user_color.lower() == "white")
-    
+    _t_start = time.perf_counter()
+    _eval_stats = {"hits": 0, "misses": 0}
+
     with Engine.from_settings(settings) as engine:
         def get_eval(fen: str) -> dict:
             # Try reading from cache
             cached = get_cached_engine_eval(fen, settings.engine_depth)
             if cached:
+                _eval_stats["hits"] += 1
                 return cached
-                
+
             # Miss: Run the Stockfish engine
+            _eval_stats["misses"] += 1
             eval_result = engine.analyse_fen(fen, depth=settings.engine_depth)
             
             # Cache the new result
@@ -145,5 +150,10 @@ def analyze_game(game: Game, settings: Settings) -> List[MoveAnalysis]:
                     pv_san=pv_san
                 )
             )
-            
+
+    logger.info(
+        f"[TIMING] stockfish analysis (depth={settings.engine_depth}) took "
+        f"{time.perf_counter() - _t_start:.2f}s — {len(analyses)} user moves, "
+        f"{_eval_stats['misses']} engine evals, {_eval_stats['hits']} cache hits"
+    )
     return analyses

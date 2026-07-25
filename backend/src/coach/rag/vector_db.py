@@ -29,31 +29,49 @@ def _get_embedding_function():
         return embedding_functions.DefaultEmbeddingFunction()
 
 
+# The persistent client and its collection handle are process-stable: the DB path and the
+# embedding function never change within a run. Rebuilding them on every retrieval re-opened the
+# client and re-instantiated the OpenAI embedding function each time, so they are memoized per
+# persist_dir here. reset_collection() must invalidate this cache after a re-ingest.
+_COLLECTION_CACHE: dict = {}
+
+
 def get_collection(persist_dir: str):
-    """Initializes and returns a persistent ChromaDB collection.
-    
-    Handles embedding function conflicts by loading the collection without 
+    """Initializes and returns a persistent ChromaDB collection (memoized per persist_dir).
+
+    Handles embedding function conflicts by loading the collection without
     specifying the function if a mismatch is detected.
     """
+    cached = _COLLECTION_CACHE.get(persist_dir)
+    if cached is not None:
+        return cached
+
     import chromadb
 
     client = chromadb.PersistentClient(path=persist_dir)
     embedding_func = _get_embedding_function()
     try:
-        return client.get_or_create_collection(
+        collection = client.get_or_create_collection(
             name="chess_rag",
             embedding_function=embedding_func
         )
     except ValueError as e:
         if "embedding function" in str(e).lower():
             logger.warning("Embedding function mismatch detected. Loading collection using persisted configuration.")
-            return client.get_collection(name="chess_rag")
-        raise e
+            collection = client.get_collection(name="chess_rag")
+        else:
+            raise e
+
+    _COLLECTION_CACHE[persist_dir] = collection
+    return collection
 
 
 def reset_collection(persist_dir: str):
     """Deletes and recreates the ChromaDB collection to clear previous documents."""
     import chromadb
+
+    # The old collection handle is now stale; drop it so get_collection rebuilds on next use.
+    _COLLECTION_CACHE.pop(persist_dir, None)
 
     client = chromadb.PersistentClient(path=persist_dir)
     try:
@@ -61,7 +79,9 @@ def reset_collection(persist_dir: str):
     except Exception:
         pass
     embedding_func = _get_embedding_function()
-    return client.get_or_create_collection(
+    collection = client.get_or_create_collection(
         name="chess_rag",
         embedding_function=embedding_func
     )
+    _COLLECTION_CACHE[persist_dir] = collection
+    return collection
