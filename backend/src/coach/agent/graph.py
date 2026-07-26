@@ -1,5 +1,6 @@
 import logging
 import re
+import time
 from typing import TypedDict, List, Optional, Annotated
 from langgraph.graph import StateGraph, END
 from langgraph.graph.message import add_messages
@@ -47,6 +48,34 @@ def append_agent_steps(left: Optional[List[dict]], right: Optional[List[dict]]) 
         res.extend(right)
     return res
 
+
+def merge_node_timings(left: Optional[List[dict]], right: Optional[List[dict]]) -> List[dict]:
+    """Accumulates per-node wall-clock timings across the run. A list rather than a dict so a
+    node that runs more than once (e.g. synthesizer on a grounding retry) keeps every entry."""
+    res = []
+    if left:
+        res.extend(left)
+    if right:
+        res.extend(right)
+    return res
+
+
+def timed_node(name: str, fn):
+    """Wraps a graph node so its wall-clock duration is logged and recorded in state.
+
+    Kept as a compile-time wrapper (rather than editing each node body) so the timing concern
+    stays out of the node logic and every node is instrumented uniformly.
+    """
+    def wrapper(state: "CoachState") -> dict:
+        _t0 = time.perf_counter()
+        result = fn(state)
+        elapsed = time.perf_counter() - _t0
+        logger.info(f"[TIMING] node={name} took {elapsed:.2f}s")
+        if isinstance(result, dict):
+            result = {**result, "node_timings": [{"node": name, "seconds": round(elapsed, 3)}]}
+        return result
+    return wrapper
+
 class CoachState(TypedDict):
     messages: Annotated[List[BaseMessage], add_messages]
     username: Optional[str]
@@ -66,6 +95,7 @@ class CoachState(TypedDict):
     rules_findings: Optional[dict]
     execution_logs: Annotated[List[str], append_logs]
     agent_steps: Annotated[List[dict], append_agent_steps]
+    node_timings: Annotated[List[dict], merge_node_timings]
 
 
 
@@ -655,13 +685,13 @@ def compile_coach_graph():
     """Compiles the rewired multi-agent Coach StateGraph workflow with MemorySaver."""
     workflow = StateGraph(CoachState)
     
-    # Add nodes
-    workflow.add_node("fetch_and_analyse", fetch_and_analyse_node)
-    workflow.add_node("router_agent", router_agent_node)
-    workflow.add_node("strategy_node", strategy_node)
-    workflow.add_node("rules_node", rules_node)
-    workflow.add_node("synthesizer_node", synthesizer_node)
-    workflow.add_node("grounding_guard", grounding_guard_node)
+    # Add nodes (each wrapped with timed_node so per-node latency is logged and recorded in state)
+    workflow.add_node("fetch_and_analyse", timed_node("fetch_and_analyse", fetch_and_analyse_node))
+    workflow.add_node("router_agent", timed_node("router_agent", router_agent_node))
+    workflow.add_node("strategy_node", timed_node("strategy_node", strategy_node))
+    workflow.add_node("rules_node", timed_node("rules_node", rules_node))
+    workflow.add_node("synthesizer_node", timed_node("synthesizer_node", synthesizer_node))
+    workflow.add_node("grounding_guard", timed_node("grounding_guard", grounding_guard_node))
     
     # Set execution edges
     workflow.set_entry_point("fetch_and_analyse")

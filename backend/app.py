@@ -49,6 +49,36 @@ app.add_middleware(
 coach_graph = compile_coach_graph()
 
 
+def _warm_up() -> None:
+    """Pays the one-time cold-start costs before the first real request.
+
+    The first review is otherwise dominated by process warm-up, not by the review itself:
+    importing litellm, opening ChromaDB and loading its HNSW index, and standing up the OpenAI
+    embedding client. Triggering a throwaway retrieval + a tiny LLM call here moves all of that
+    off the user's first /review. Runs in a daemon thread so the server still binds immediately,
+    and never raises — a warm-up failure must not stop the app from starting.
+    """
+    settings = get_settings()
+    try:
+        from coach.rag.pipeline import retrieve_context
+        _t0 = time.time()
+        retrieve_context("warm up", persist_dir=settings.chroma_db_path, limit=1, bucket="strategies")
+        logger.info(f"[WARMUP] RAG retrieval warmed in {time.time() - _t0:.2f}s")
+    except Exception as e:
+        logger.warning(f"[WARMUP] RAG warm-up skipped: {e}")
+    try:
+        from coach.llm.gateway import chat
+        _t0 = time.time()
+        chat(messages=[{"role": "user", "content": "ok"}])
+        logger.info(f"[WARMUP] LLM gateway warmed in {time.time() - _t0:.2f}s")
+    except Exception as e:
+        logger.warning(f"[WARMUP] LLM warm-up skipped: {e}")
+
+
+import threading
+threading.Thread(target=_warm_up, name="warmup", daemon=True).start()
+
+
 class ReviewRequest(BaseModel):
     username: Optional[str] = None
     source: Optional[Source] = None
@@ -312,9 +342,16 @@ def review_game(request: ReviewRequest):
         retriever_type=request.retriever_type or "hybrid",
         grounding_log=grounding_events,
         execution_log=final_state.get("execution_logs") or [] ,
-        agent_steps=agent_steps
+        agent_steps=agent_steps,
+        node_timings=final_state.get("node_timings") or []
     )
-    
+
+    # Log the end-to-end per-node breakdown for this request.
+    node_timings = final_state.get("node_timings") or []
+    if node_timings:
+        breakdown = ", ".join(f"{t['node']}={t['seconds']}s" for t in node_timings)
+        logger.info(f"[TIMING] /review node breakdown: {breakdown}")
+
     # Calculate game status based on result and user_color
     game_status = "draw"
     if game.result == "1-0":
@@ -423,9 +460,10 @@ def chat_message(request: ChatRequest):
         retriever_type=current_state.values.get("retriever_type") or "hybrid",
         grounding_log=grounding_events,
         execution_log=final_state.get("execution_logs") or [],
-        agent_steps=agent_steps
+        agent_steps=agent_steps,
+        node_timings=final_state.get("node_timings") or []
     )
-    
+
     return {
         "reply": reply,
         "developer_insight": dev_insight

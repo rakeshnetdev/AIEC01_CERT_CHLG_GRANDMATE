@@ -1,5 +1,6 @@
 import os
 import logging
+import time
 from pathlib import Path
 from typing import List, Dict, Optional
 from coach.rag.loader import load_openings, load_markdown_notes, load_pdf
@@ -270,19 +271,27 @@ def retrieve_context(query: str, persist_dir: str, limit: int = 2, retriever_typ
         retriever_type = get_settings().retriever_type
 
     logger.info(f"Querying vector store ({retriever_type}) at {persist_dir} (bucket: {bucket}) with: '{query}'")
-    
+
+    _t0 = time.perf_counter()
     collection = get_collection(persist_dir)
-    
+    logger.info(f"[TIMING] rag get_collection (client + embedding fn init) took {time.perf_counter() - _t0:.2f}s")
+
+    _t0 = time.perf_counter()
     bm25_data = get_bm25_index(collection)
+    logger.info(f"[TIMING] rag get_bm25_index took {time.perf_counter() - _t0:.2f}s")
     if not bm25_data:
         logger.warning("No documents found in ChromaDB to build BM25 index.")
         return []
-        
+
     bm25, doc_ids, doc_lookup = bm25_data
-    
-    if retriever_type == "dense":
-        return _retrieve_dense_only(query, collection, limit, doc_ids, doc_lookup, bucket)
-    elif retriever_type == "sparse":
-        return _retrieve_sparse_only(query, bm25, limit, doc_ids, doc_lookup, bucket)
-    else:
-        return _retrieve_hybrid_fused(query, collection, bm25, limit, doc_ids, doc_lookup, bucket)
+
+    _t0 = time.perf_counter()
+    try:
+        if retriever_type == "dense":
+            return _retrieve_dense_only(query, collection, limit, doc_ids, doc_lookup, bucket)
+        elif retriever_type == "sparse":
+            return _retrieve_sparse_only(query, bm25, limit, doc_ids, doc_lookup, bucket)
+        else:
+            return _retrieve_hybrid_fused(query, collection, bm25, limit, doc_ids, doc_lookup, bucket)
+    finally:
+        logger.info(f"[TIMING] rag {retriever_type} retrieval (incl. query embedding) took {time.perf_counter() - _t0:.2f}s")

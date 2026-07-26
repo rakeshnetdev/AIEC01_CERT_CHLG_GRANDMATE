@@ -36,12 +36,14 @@ def chat(messages: List[Dict[str, str]], model: str | None = None, **kw) -> str:
 
     for attempt in range(4):
         try:
+            _t0 = time.perf_counter()
             response = litellm.completion(
                 model=primary_model,
                 messages=messages,
                 fallbacks=fallbacks,
                 **kw
             )
+            logger.info(f"[TIMING] llm chat model={primary_model} took {time.perf_counter() - _t0:.2f}s")
             return response.choices[0].message.content
         except Exception as e:
             is_rate_limit = isinstance(e, litellm.exceptions.RateLimitError)
@@ -57,11 +59,13 @@ def chat(messages: List[Dict[str, str]], model: str | None = None, **kw) -> str:
                     f"Falling back to {fallbacks[0]}."
                 )
                 try:
+                    _t0 = time.perf_counter()
                     response = litellm.completion(
                         model=fallbacks[0],
                         messages=messages,
                         **kw
                     )
+                    logger.info(f"[TIMING] llm chat (fallback) model={fallbacks[0]} took {time.perf_counter() - _t0:.2f}s")
                     return response.choices[0].message.content
                 except Exception as fallback_err:
                     logger.error(f"Fallback model query also failed: {fallback_err}")

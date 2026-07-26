@@ -85,6 +85,7 @@ class DeveloperInsight(BaseModel):
     grounding_log: List[GroundingEvent] = []
     execution_log: List[str] = []
     agent_steps: List[AgentStep] = []
+    node_timings: List[dict] = []
 
 class CoachReport(BaseModel):
     username: str

@@ -6,7 +6,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     stockfish_path: str = "/usr/local/bin/stockfish"
-    engine_depth: int = 16
+    engine_depth: int = 12
     inaccuracy_cp: int = 50
     mistake_cp: int = 100
     blunder_cp: int = 300
